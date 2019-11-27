@@ -220,9 +220,24 @@ fn main() {
     env.insert("a".to_string(), r(V::Fn(Box::new(|vec: Vec<R<V>>| {
         vec.first().unwrap().clone()
     }))));
+    env.insert("concat".to_string(), r(V::Fn(Box::new(|vec: Vec<R<V>>| {
+        if let V::Nil = *vec.last().unwrap().borrow() {
+            r(V::Symbol(vec.iter().take(vec.len() - 1).map(|rv| {
+                if let V::Symbol(ref s) = *rv.borrow() {
+                    s.clone()
+                } else {
+                    format!("{:?}", rv)
+                }
+            }).collect::<Vec<String>>().join("")))
+        } else {
+            panic!();
+        }
+    }))));
+
 
     println!("{}", RVC(&eval(&env, parse("(quote a)").unwrap()).borrow()));
     println!("{}", RVC(&eval(&env, parse("(if (quote a) (quote b) (quote c))").unwrap()).borrow()));
     println!("{}", RVC(&eval(&env, parse("(a (quote 123))").unwrap()).borrow()));
+    println!("{}", RVC(&eval(&env, parse("(concat (quote a) (quote b))").unwrap()).borrow()));
     //println!("{}", pm!(1, 1 => 2, _ => 3));
 }
