@@ -77,6 +77,15 @@ macro_rules! fun {
     };
 }
 
+macro_rules! sx {
+    (($($xs:tt)*)) => {
+        r(vec![$(sx!{$xs}),*]) as R<V>
+    };
+    ($x:tt) => {
+        r(stringify!($x).to_string()) as R<V>
+    };
+}
+
 fn main() {
     let mut env: Env = HashMap::new();
     env.insert("a".to_string(), r(Box::new(|vec: Vec<R<V>>| {
@@ -131,6 +140,9 @@ fn main() {
     println!("{:?}", eval(&env, parse("(quote a)").unwrap()).borrow().downcast_ref::<String>());
     println!("{:?}", eval(&env, parse("(parse_int (quote 123))").unwrap()).borrow().downcast_ref::<i32>());
     println!("{:?}", eval(&env, parse("(add3 (parse_int (quote 123)) (parse_int (quote 123)))").unwrap()).borrow().downcast_ref::<i32>());
+    println!("{:?}", eval(&env, sx!{
+        (add3 (parse_int (quote 123)) (parse_int (quote 123)))
+    }).borrow().downcast_ref::<i32>());
     // println!("{}", RVC(&eval(&env, parse("(quote a)").unwrap()).borrow()));
     // println!("{}", RVC(&eval(&env, parse("(if (quote a) (quote b) (quote c))").unwrap()).borrow()));
     // println!("{}", RVC(&eval(&env, parse("(a (quote 123))").unwrap()).borrow()));
