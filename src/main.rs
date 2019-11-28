@@ -85,7 +85,7 @@ macro_rules! fun_ {
     };
     ($fn:ident ($($args:expr,)*), $it:ident, (&$t:ty $(, $ts:ty)*)) => {
         if let V::Any(ref ra) = *$it.next().unwrap().borrow() {
-            if let Some(v) = ra.borrow().downcast_ref::<$t>() {
+            if let Some(v) = ra.borrow_mut().downcast_mut::<$t>() {
                 fun_!($fn ($($args,)* v,), $it, ($($ts),*))
             }
         }
