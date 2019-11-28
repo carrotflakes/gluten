@@ -53,12 +53,12 @@ fn parse_value<'a>(cs: &Chars<'a>) -> Result<(R<V>, Chars<'a>), String> {
             }
             Ok((ret_rv, cs))
         },
-        Some(c) if c.is_alphanumeric() => {
+        Some(c) if c.is_alphanumeric() || c == '-' => {
             let mut vec = vec![c];
             let mut ncs = cs.clone();
             loop {
                 match ncs.next() {
-                    Some(c) if c.is_alphanumeric() => {
+                    Some(c) if c.is_alphanumeric() || c == '-' => {
                         vec.push(c);
                         cs = ncs.clone();
                     },
@@ -73,3 +73,11 @@ fn parse_value<'a>(cs: &Chars<'a>) -> Result<(R<V>, Chars<'a>), String> {
         _ => Err("fail".to_string())
     }
 }
+
+// impl std::str::FromStr for R<V> {
+//     type Err = String;
+
+//     fn from_str(s: &str) -> Result<Self, Self::Err> {
+//         parse(s)
+//     }
+// }

@@ -53,7 +53,13 @@ fn eval(env: &Env, rv: R<V>) -> R<V> {
                 _ => {
                     let first = eval(env, vec[0].clone());
                     let rv = if let V::Fn(ref f) = *first.borrow() {
-                        f(vec.iter().skip(1).map(|rv| eval(env, rv.clone())).collect())
+                        let mut vec: Vec<R<V>> = vec.iter().skip(1).map(|rv| eval(env, rv.clone())).collect();
+                        if *vec.last().unwrap().borrow() == V::Nil {
+                            vec.pop();
+                            f(vec)
+                        } else {
+                            panic!("improper list");
+                        }
                     } else {
                         panic!("function expected, but found: {}", RVC(&first.borrow()));
                     };
@@ -63,6 +69,49 @@ fn eval(env: &Env, rv: R<V>) -> R<V> {
         _ => r(V::Nil)
     };
     r
+}
+
+fn parse_int(s: &String) -> i32 {
+    s.parse().unwrap()
+}
+
+fn add(a: i32, b: i32) -> i32 {
+    a + b
+}
+
+macro_rules! fun_ {
+    ($call:expr, $it:ident, ()) => {
+        return r(V::Any(r($call)));
+    };
+    ($fn:ident ($($args:expr,)*), $it:ident, (&$t:ty $(, $ts:ty)*)) => {
+        if let V::Any(ref ra) = *$it.next().unwrap().borrow() {
+            if let Some(v) = ra.borrow().downcast_ref::<$t>() {
+                fun_!($fn ($($args,)* v,), $it, ($($ts),*))
+            }
+        }
+    };
+    ($fn:ident ($($args:expr,)*), $it:ident, ($t:ty $(, $ts:ty)*)) => {
+        if let V::Any(ref ra) = *$it.next().unwrap().borrow() {
+            if let Some(v) = ra.borrow().downcast_ref::<$t>() {
+                fun_!($fn ($($args,)* *v,), $it, ($($ts),*))
+            }
+        }
+    };
+}
+
+macro_rules! fun {
+    ($fn:ident $params:tt) => {
+        r(V::Fn(Box::new(|vec: Vec<R<V>>| {
+            let mut it = vec.iter();
+            fun_!($fn (), it, $params);
+            panic!();
+        })))
+    };
+}
+macro_rules! macroo {
+    ($i:ident : $t:ty) => {
+        println!("{}", $i as $t);
+    };
 }
 
 fn main() {
@@ -79,23 +128,57 @@ fn main() {
         vec.first().unwrap().clone()
     }))));
     env.insert("concat".to_string(), r(V::Fn(Box::new(|vec: Vec<R<V>>| {
-        if let V::Nil = *vec.last().unwrap().borrow() {
-            r(V::Symbol(vec.iter().take(vec.len() - 1).map(|rv| {
-                if let V::Symbol(ref s) = *rv.borrow() {
-                    s.clone()
-                } else {
-                    format!("{:?}", rv)
-                }
-            }).collect::<Vec<String>>().join("")))
+        r(V::Symbol(vec.iter().map(|rv| {
+            if let V::Symbol(ref s) = *rv.borrow() {
+                s.clone()
+            } else {
+                format!("{:?}", rv)
+            }
+        }).collect::<Vec<String>>().join("")))
+    }))));
+    env.insert("symbol-string".to_string(), r(V::Fn(Box::new(|vec: Vec<R<V>>| {
+        if let V::Symbol(ref s) = *vec[0].borrow() {
+            r(V::Any(r(s.clone())))
         } else {
             panic!();
         }
     }))));
-
+    env.insert("add".to_string(), r(V::Fn(Box::new(|vec: Vec<R<V>>| {
+        if vec.len() != 2 {panic!();}
+        if let V::Any(ref ra1) = *vec[0].borrow() {
+            if let V::Any(ref ra2) = *vec[1].borrow() {
+                if let Some(v1) = ra1.borrow().downcast_ref::<i32>() {
+                    if let Some(v2) = ra2.borrow().downcast_ref::<i32>() {
+                        return r(V::Any(r(v1 + v2)));
+                    }
+                }
+            }
+        }
+        panic!();
+    }))));
+    env.insert("add2".to_string(), r(V::Fn(Box::new(|vec: Vec<R<V>>| {
+        if vec.len() != 2 {panic!();}
+        let mut it = vec.iter();
+        if let V::Any(ref ra1) = *it.next().unwrap().borrow() {
+            if let Some(v1) = ra1.borrow().downcast_ref::<i32>() {
+                if let V::Any(ref ra2) = *it.next().unwrap().borrow() {
+                    if let Some(v2) = ra2.borrow().downcast_ref::<i32>() {
+                        return r(V::Any(r(v1 + v2)));
+                    }
+                }
+            }
+        }
+        panic!();
+    }))));
+    env.insert("add3".to_string(), fun!(add(i32, i32)));
+    env.insert("parse-int".to_string(), fun!(parse_int(&String)));
 
     println!("{}", RVC(&eval(&env, parse("(quote a)").unwrap()).borrow()));
     println!("{}", RVC(&eval(&env, parse("(if (quote a) (quote b) (quote c))").unwrap()).borrow()));
     println!("{}", RVC(&eval(&env, parse("(a (quote 123))").unwrap()).borrow()));
     println!("{}", RVC(&eval(&env, parse("(concat (quote a) (quote b))").unwrap()).borrow()));
+    println!("{}", RVC(&eval(&env, parse("(add3 (parse-int (symbol-string (quote 1))) (parse-int (symbol-string (quote 2))))").unwrap()).borrow()));
     //println!("{}", pm!(1, 1 => 2, _ => 3));
+    //let a = 1;
+    //macroo!(a: usize);
 }

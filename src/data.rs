@@ -41,8 +41,8 @@ impl PartialEq for V {
     }
 }
 
-pub fn r(v: V) -> R<V> {
-    Rc::new(RefCell::new(v))
+pub fn r<T>(t: T) -> R<T> {
+    Rc::new(RefCell::new(t))
 }
 
 #[derive(Debug)]
