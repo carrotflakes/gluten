@@ -35,13 +35,12 @@ fn eval(env: &Env, rv: R<V>) -> R<V> {
             let args = vec.iter().skip(1).map(|rv| eval(env, rv.clone())).collect();
             f(args)
         } else {
-            panic!();
+            panic!("non-function was applied");
         };
         return r;
     } else {
         return rv.clone();
     }
-    panic!();
 }
 
 fn parse_int(s: &String) -> i32 {
@@ -70,16 +69,11 @@ macro_rules! fun_ {
 
 macro_rules! fun {
     ($fn:ident $params:tt) => {
-        r(Box::new(|vec: Vec<R<V>>| {
+        r(Box::new(|vec: Vec<R<V>>| -> R<V> {
             let mut it = vec.iter();
             fun_!($fn (), it, $params);
             panic!();
-        }))
-    };
-}
-macro_rules! macroo {
-    ($i:ident : $t:ty) => {
-        println!("{}", $i as $t);
+        }) as MyFn)
     };
 }
 
@@ -87,7 +81,7 @@ fn main() {
     let mut env: Env = HashMap::new();
     env.insert("a".to_string(), r(Box::new(|vec: Vec<R<V>>| {
         vec.first().unwrap().clone()
-    })));
+    }) as MyFn));
     // env.insert("concat".to_string(), r(|vec: Vec<R<V>>| {
     //     r(V::Symbol(vec.iter().map(|rv| {
     //         if let V::Symbol(ref s) = *rv.borrow() {
@@ -132,9 +126,11 @@ fn main() {
     //     panic!();
     // }));
     env.insert("add3".to_string(), fun!(add(i32, i32)));
-    env.insert("parse-int".to_string(), fun!(parse_int(&String)));
+    env.insert("parse_int".to_string(), fun!(parse_int(&String)));
 
     println!("{:?}", eval(&env, parse("(quote a)").unwrap()).borrow().downcast_ref::<String>());
+    println!("{:?}", eval(&env, parse("(parse_int (quote 123))").unwrap()).borrow().downcast_ref::<i32>());
+    println!("{:?}", eval(&env, parse("(add3 (parse_int (quote 123)) (parse_int (quote 123)))").unwrap()).borrow().downcast_ref::<i32>());
     // println!("{}", RVC(&eval(&env, parse("(quote a)").unwrap()).borrow()));
     // println!("{}", RVC(&eval(&env, parse("(if (quote a) (quote b) (quote c))").unwrap()).borrow()));
     // println!("{}", RVC(&eval(&env, parse("(a (quote 123))").unwrap()).borrow()));

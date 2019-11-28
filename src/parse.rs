@@ -39,12 +39,12 @@ fn parse_value<'a>(cs: &Chars<'a>) -> Result<(R<V>, Chars<'a>), String> {
             }
             Ok((r(vec), cs))
         },
-        Some(c) if c.is_alphanumeric() || c == '-' => {
+        Some(c) if c.is_alphanumeric() || c == '_' => {
             let mut vec = vec![c];
             let mut ncs = cs.clone();
             loop {
                 match ncs.next() {
-                    Some(c) if c.is_alphanumeric() || c == '-' => {
+                    Some(c) if c.is_alphanumeric() || c == '_' => {
                         vec.push(c);
                         cs = ncs.clone();
                     },
