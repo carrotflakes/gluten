@@ -1,47 +1,13 @@
 pub mod data;
 pub mod parse;
+pub mod core;
+#[macro_use]
+pub mod macros;
 
 use crate::data::*;
 use crate::parse::parse;
+use crate::core::{eval, Env};
 
-use std::collections::HashMap;
-
-type Env = HashMap<String, R<V>>;
-
-fn eval(env: &Env, rv: R<V>) -> R<V> {
-    if let Some(ref s) = rv.borrow().downcast_ref::<String>() {
-        if let Some(rv) = env.get(s.clone()) {
-            return rv.clone();
-        } else {
-            panic!("unbound: {:?}", s);
-        }
-    } else if let Some(ref vec) = rv.borrow().downcast_ref::<Vec<R<V>>>() {
-        if let Some(ref s) = vec[0].borrow().downcast_ref::<String>() {
-            match s.as_str() {
-                "quote" =>
-                    if vec.len() == 2 {
-                        return vec[1].clone();
-                    }
-                "if" =>
-                    if vec.len() == 5 {
-                        unimplemented!()
-                            //return eval(env, vec[unimplemented!()].clone())
-                    },
-                _ => {}
-            }
-        }
-        let first = eval(env, vec[0].clone());
-        let r = if let Some(ref f) = first.borrow().downcast_ref::<MyFn>() {
-            let args = vec.iter().skip(1).map(|rv| eval(env, rv.clone())).collect();
-            f(args)
-        } else {
-            panic!("non-function was applied");
-        };
-        return r;
-    } else {
-        return rv.clone();
-    }
-}
 
 fn parse_int(s: &String) -> i32 {
     s.parse().unwrap()
@@ -51,43 +17,9 @@ fn add(a: i32, b: i32) -> i32 {
     a + b
 }
 
-macro_rules! fun_ {
-    ($call:expr, $it:ident, ()) => {
-        return r($call);
-    };
-    ($fn:ident ($($args:expr,)*), $it:ident, (&$t:ty $(, $ts:ty)*)) => {
-        if let Some(v) = $it.next().unwrap().borrow_mut().downcast_mut::<$t>() {
-            fun_!($fn ($($args,)* v,), $it, ($($ts),*))
-        }
-    };
-    ($fn:ident ($($args:expr,)*), $it:ident, ($t:ty $(, $ts:ty)*)) => {
-        if let Some(v) = $it.next().unwrap().borrow().downcast_ref::<$t>() {
-            fun_!($fn ($($args,)* *v,), $it, ($($ts),*))
-        }
-    };
-}
-
-macro_rules! fun {
-    ($fn:ident $params:tt) => {
-        r(Box::new(|vec: Vec<R<V>>| -> R<V> {
-            let mut it = vec.iter();
-            fun_!($fn (), it, $params);
-            panic!();
-        }) as MyFn)
-    };
-}
-
-macro_rules! sx {
-    (($($xs:tt)*)) => {
-        r(vec![$(sx!{$xs}),*]) as R<V>
-    };
-    ($x:tt) => {
-        r(stringify!($x).to_string()) as R<V>
-    };
-}
 
 fn main() {
-    let mut env: Env = HashMap::new();
+    let mut env = Env::new();
     env.insert("a".to_string(), r(Box::new(|vec: Vec<R<V>>| {
         vec.first().unwrap().clone()
     }) as MyFn));
