@@ -31,6 +31,12 @@ macro_rules! sx {
     (($($xs:tt)*)) => {
         r(vec![$(sx!{$xs}),*]) as R<V>
     };
+    (true) => {
+        r(true) as R<V>
+    };
+    (false) => {
+        r(false) as R<V>
+    };
     ($x:tt) => {
         r(stringify!($x).to_string()) as R<V>
     };

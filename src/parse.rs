@@ -54,16 +54,12 @@ fn parse_value<'a>(cs: &Chars<'a>) -> Result<(R<V>, Chars<'a>), String> {
                 }
             }
             let s: String = vec.iter().collect();
-            Ok((r(s), cs))
+            match s.as_str() {
+                "true" => Ok((r(true), cs)),
+                "false" => Ok((r(false), cs)),
+                _ => Ok((r(s), cs))
+            }
         },
         _ => Err("fail".to_string())
     }
 }
-
-// impl std::str::FromStr for R<V> {
-//     type Err = String;
-
-//     fn from_str(s: &str) -> Result<Self, Self::Err> {
-//         parse(s)
-//     }
-// }

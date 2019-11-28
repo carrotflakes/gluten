@@ -19,9 +19,13 @@ pub fn eval(env: &Env, rv: R<V>) -> R<V> {
                         return vec[1].clone();
                     }
                 "if" =>
-                    if vec.len() == 5 {
-                        unimplemented!()
-                            //return eval(env, vec[unimplemented!()].clone())
+                    if vec.len() == 4 {
+                        let cond = eval(env, vec[1].clone());
+                        return if let Some(false) = cond.borrow().downcast_ref::<bool>() {
+                            eval(env, vec[3].clone())
+                        } else {
+                            eval(env, vec[2].clone())
+                        };
                     },
                 _ => {}
             }
