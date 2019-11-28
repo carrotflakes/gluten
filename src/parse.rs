@@ -31,27 +31,13 @@ fn parse_value<'a>(cs: &Chars<'a>) -> Result<(R<V>, Chars<'a>), String> {
                 }
             }
             cs = skip_whitespace(&cs);
-            let mut ret_rv = r(V::Nil);
             while let Some(c) = cs.next() {
                 if c == ')' {
                     break;
-                } else if c == '.' {
-                    cs = skip_whitespace(&cs);
-                    if let Ok((rv, ncs)) = parse_value(&cs) {
-                        ret_rv = rv;
-                        cs = ncs.clone();
-                        cs = skip_whitespace(&cs);
-                        if let Some(')') = cs.next() {
-                            break;
-                        }
-                    }
                 }
                 return Err("fail".to_string());
             }
-            for rv in vec.into_iter().rev() {
-                ret_rv = r(V::Cons(rv, ret_rv));
-            }
-            Ok((ret_rv, cs))
+            Ok((r(vec), cs))
         },
         Some(c) if c.is_alphanumeric() || c == '-' => {
             let mut vec = vec![c];
@@ -67,8 +53,8 @@ fn parse_value<'a>(cs: &Chars<'a>) -> Result<(R<V>, Chars<'a>), String> {
                     }
                 }
             }
-            let s = vec.iter().collect();
-            Ok((r(if &s == "nil" { V::Nil } else {V::Symbol(s)}), cs))
+            let s: String = vec.iter().collect();
+            Ok((r(s), cs))
         },
         _ => Err("fail".to_string())
     }
