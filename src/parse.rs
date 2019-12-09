@@ -39,6 +39,10 @@ fn parse_value<'a>(cs: &Chars<'a>) -> Result<(R<V>, Chars<'a>), String> {
             }
             Ok((r(vec), cs))
         },
+        Some('\'') => {
+            let (rv, ncs) = parse_value(&cs)?;
+            Ok((r(vec![r("quote".to_string()) as R<V>, rv]), ncs))
+        },
         Some(c) if c.is_alphanumeric() || c == '_' || c == '.' => {
             let mut vec = vec![c];
             let mut ncs = cs.clone();
