@@ -35,7 +35,7 @@ fn parse_value<'a>(cs: &Chars<'a>) -> Result<(R<V>, Chars<'a>), String> {
                 if c == ')' {
                     break;
                 }
-                return Err("fail".to_string());
+                return Err("closing parenthesis missing".to_string());
             }
             Ok((r(vec), cs))
         },
@@ -60,6 +60,6 @@ fn parse_value<'a>(cs: &Chars<'a>) -> Result<(R<V>, Chars<'a>), String> {
                 _ => Ok((r(s), cs))
             }
         },
-        _ => Err("fail".to_string())
+        _ => Err("unexpected EOS".to_string())
     }
 }
