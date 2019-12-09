@@ -1,12 +1,11 @@
-pub mod data;
-pub mod parse;
-pub mod core;
 #[macro_use]
-pub mod macros;
+extern crate gluten;
 
-use crate::data::*;
-use crate::parse::parse;
-use crate::core::{eval, Env};
+use gluten::{
+    data::*,
+    parse::parse,
+    core::{eval, Env}
+};
 
 
 fn parse_int(s: &String) -> i32 {
