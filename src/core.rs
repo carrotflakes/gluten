@@ -2,50 +2,50 @@ use crate::data::*;
 
 use std::collections::HashMap;
 
-pub struct Env<'a> {
+pub struct Env {
     hash_map: HashMap<String, R<V>>,
-    parent: Option<&'a Env<'a>>
+    parent: Option<R<Env>>
 }
 
-impl<'a> Env<'a> {
-    pub fn new() -> Env<'a> {
-        Env {
+impl Env {
+    pub fn new() -> R<Env> {
+        r(Env {
             hash_map: HashMap::new(),
             parent: None
-        }
+        })
     }
 
-    pub fn insert(&mut self, s: String, rv: R<V>) {
-        self.hash_map.insert(s, rv);
+    pub fn insert(renv: &mut R<Self>, s: String, rv: R<V>) {
+        renv.borrow_mut().hash_map.insert(s, rv);
     }
 
-    pub fn get(&self, s: &String) -> Option<R<V>> {
-        if let Some(rv) = self.hash_map.get(s) {
+    pub fn get(renv: &R<Self>, s: &String) -> Option<R<V>> {
+        if let Some(rv) = renv.borrow().hash_map.get(s) {
             Some(rv.clone())
         } else {
-            self.parent.and_then(|renv| renv.get(s))
+            renv.borrow().parent.as_ref().and_then(|renv| Env::get(renv, s))
         }
     }
 
-    pub fn child(&'a self) -> Env<'a> {
-        Env {
+    pub fn child(renv: R<Self>) -> R<Env> {
+        r(Env {
             hash_map: HashMap::new(),
-            parent: Some(self)
-        }
+            parent: Some(renv)
+        })
     }
 }
 
-fn eval_iter<'a>(env: &Env, iter: &mut dyn Iterator<Item=&'a R<V>>) -> R<V> {
+fn eval_iter<'a>(env: R<Env>, iter: &mut dyn Iterator<Item=&'a R<V>>) -> R<V> {
     let mut ret = r("nil".to_string()) as R<V>;
     for rv in iter {
-        ret = eval(&env, rv.clone());
+        ret = eval(env.clone(), rv.clone());
     }
     return ret;
 }
 
-pub fn eval(env: &Env, rv: R<V>) -> R<V> {
+pub fn eval(env: R<Env>, rv: R<V>) -> R<V> {
     if let Some(ref s) = rv.borrow().downcast_ref::<String>() {
-        if let Some(rv) = env.get(s.clone()) {
+        if let Some(rv) = Env::get(&env, s.clone()) {
             return rv.clone();
         } else {
             panic!("unbound: {:?}", s);
@@ -59,7 +59,7 @@ pub fn eval(env: &Env, rv: R<V>) -> R<V> {
                     }
                 "if" =>
                     if vec.len() == 4 {
-                        let cond = eval(env, vec[1].clone());
+                        let cond = eval(env.clone(), vec[1].clone());
                         return if let Some(false) = cond.borrow().downcast_ref::<bool>() {
                             eval(env, vec[3].clone())
                         } else {
@@ -69,28 +69,48 @@ pub fn eval(env: &Env, rv: R<V>) -> R<V> {
                 "let" =>
                     if vec.len() >= 2 {
                         if let Some(v) = vec[1].borrow().downcast_ref::<Vec<R<V>>>() {
-                            let mut env = env.child();
+                            let mut env = Env::child(env);
                             for rv in v.iter() {
                                 if let Some(v) = rv.borrow().downcast_ref::<Vec<R<V>>>() {
                                     if let Some(s) = v[0].borrow().downcast_ref::<String>() {
-                                        env.insert(s.clone(), eval(&env, v[1].clone()));
+                                        let rv = eval(env.clone(), v[1].clone());
+                                        Env::insert(&mut env, s.clone(), rv);
                                         continue;
                                     }
                                 }
                                 panic!("illegal let");
                             }
-                            return eval_iter(&env, &mut vec.iter().skip(2))
+                            return eval_iter(env, &mut vec.iter().skip(2))
                         }
                     }
                 "do" => {
                     return eval_iter(env, &mut vec.iter().skip(1))
                 }
+                "lambda" => {
+                    let params = if let Some(params) = vec[1].borrow().downcast_ref::<Vec<R<V>>>() {
+                        params.clone()
+                    } else {
+                        panic!("illegal lambda params");
+                    };
+                    let body: Vec<R<V>> = vec.iter().skip(2).map(|rv| rv.clone()).collect();
+                    return r(Box::new(move |args: Vec<R<V>>| {
+                        let mut env = env.clone();
+                        for (rs, rv) in params.iter().zip(args.iter()) {
+                            if let Some(s) = (*rs).borrow().downcast_ref::<String>() {
+                                Env::insert(&mut env, s.clone(), rv.clone());
+                                continue;
+                            }
+                            panic!("illegal lambda");
+                        }
+                        eval_iter(env, &mut body.iter())
+                    }) as MyFn);
+                }
                 _ => {}
             }
         }
-        let first = eval(env, vec[0].clone());
+        let first = eval(env.clone(), vec[0].clone());
         let r = if let Some(ref f) = first.borrow().downcast_ref::<MyFn>() {
-            let args = vec.iter().skip(1).map(|rv| eval(env, rv.clone())).collect();
+            let args = vec.iter().skip(1).map(|rv| eval(env.clone(), rv.clone())).collect();
             f(args)
         } else {
             panic!("non-function was applied");
