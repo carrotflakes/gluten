@@ -58,6 +58,22 @@ pub fn eval(env: &Env, rv: R<V>) -> R<V> {
                             eval(env, vec[2].clone())
                         };
                     },
+                "let" =>
+                    if vec.len() == 3 {
+                        if let Some(v) = vec[1].borrow().downcast_ref::<Vec<R<V>>>() {
+                            let mut env = env.child();
+                            for rv in v.iter() {
+                                if let Some(v) = rv.borrow().downcast_ref::<Vec<R<V>>>() {
+                                    if let Some(s) = v[0].borrow().downcast_ref::<String>() {
+                                        env.insert(s.clone(), eval(&env, v[1].clone()));
+                                        continue;
+                                    }
+                                }
+                                panic!("illegal let");
+                            }
+                            return eval(&env, vec[2].clone())
+                        }
+                    }
                 _ => {}
             }
         }
