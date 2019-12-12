@@ -35,6 +35,14 @@ impl<'a> Env<'a> {
     }
 }
 
+fn eval_iter<'a>(env: &Env, iter: &mut dyn Iterator<Item=&'a R<V>>) -> R<V> {
+    let mut ret = r("nil".to_string()) as R<V>;
+    for rv in iter {
+        ret = eval(&env, rv.clone());
+    }
+    return ret;
+}
+
 pub fn eval(env: &Env, rv: R<V>) -> R<V> {
     if let Some(ref s) = rv.borrow().downcast_ref::<String>() {
         if let Some(rv) = env.get(s.clone()) {
@@ -59,7 +67,7 @@ pub fn eval(env: &Env, rv: R<V>) -> R<V> {
                         };
                     },
                 "let" =>
-                    if vec.len() == 3 {
+                    if vec.len() >= 2 {
                         if let Some(v) = vec[1].borrow().downcast_ref::<Vec<R<V>>>() {
                             let mut env = env.child();
                             for rv in v.iter() {
@@ -71,9 +79,12 @@ pub fn eval(env: &Env, rv: R<V>) -> R<V> {
                                 }
                                 panic!("illegal let");
                             }
-                            return eval(&env, vec[2].clone())
+                            return eval_iter(&env, &mut vec.iter().skip(2))
                         }
                     }
+                "do" => {
+                    return eval_iter(env, &mut vec.iter().skip(1))
+                }
                 _ => {}
             }
         }
