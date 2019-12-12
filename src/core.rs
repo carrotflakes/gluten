@@ -2,7 +2,38 @@ use crate::data::*;
 
 use std::collections::HashMap;
 
-pub type Env = HashMap<String, R<V>>;
+pub struct Env<'a> {
+    hash_map: HashMap<String, R<V>>,
+    parent: Option<&'a Env<'a>>
+}
+
+impl<'a> Env<'a> {
+    pub fn new() -> Env<'a> {
+        Env {
+            hash_map: HashMap::new(),
+            parent: None
+        }
+    }
+
+    pub fn insert(&mut self, s: String, rv: R<V>) {
+        self.hash_map.insert(s, rv);
+    }
+
+    pub fn get(&self, s: &String) -> Option<R<V>> {
+        if let Some(rv) = self.hash_map.get(s) {
+            Some(rv.clone())
+        } else {
+            self.parent.and_then(|renv| renv.get(s))
+        }
+    }
+
+    pub fn child(&'a self) -> Env<'a> {
+        Env {
+            hash_map: HashMap::new(),
+            parent: Some(self)
+        }
+    }
+}
 
 pub fn eval(env: &Env, rv: R<V>) -> R<V> {
     if let Some(ref s) = rv.borrow().downcast_ref::<String>() {
