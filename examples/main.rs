@@ -7,7 +7,6 @@ use gluten::{
     core::{eval, Env}
 };
 
-
 fn parse_int(s: &String) -> i32 {
     s.parse().unwrap()
 }
@@ -16,9 +15,10 @@ fn add(a: i32, b: i32) -> i32 {
     a + b
 }
 
-
 fn main() {
     let mut env = Env::new();
+    env.insert("true".to_string(), r(true));
+    env.insert("false".to_string(), r(false));
     env.insert("a".to_string(), r(Box::new(|vec: Vec<R<V>>| {
         vec.first().unwrap().clone()
     }) as MyFn));
@@ -68,15 +68,17 @@ fn main() {
     env.insert("add3".to_string(), fun!(add(i32, i32)));
     env.insert("parse_int".to_string(), fun!(parse_int(&String)));
 
-    println!("{:?}", eval(&env, parse("(quote a)").unwrap()).borrow().downcast_ref::<String>());
-    println!("{:?}", eval(&env, parse("(parse_int (quote 123))").unwrap()).borrow().downcast_ref::<i32>());
-    println!("{:?}", eval(&env, parse("(add3 (parse_int (quote 123)) (parse_int (quote 123)))").unwrap()).borrow().downcast_ref::<i32>());
-    println!("{:?}", eval(&env, sx!{
+    println!("{:?}", eval(env.clone(), parse("(quote a)").unwrap()).borrow().downcast_ref::<String>());
+    println!("{:?}", eval(env.clone(), parse("(parse_int (quote 123))").unwrap()).borrow().downcast_ref::<i32>());
+    println!("{:?}", eval(env.clone(), parse("(add3 (parse_int (quote 123)) (parse_int (quote 123)))").unwrap()).borrow().downcast_ref::<i32>());
+    println!("{:?}", eval(env.clone(), sx!{
         (add3 (parse_int (quote 123)) (parse_int (quote 123)))
     }).borrow().downcast_ref::<i32>());
-    println!("{:?}", eval(&env, sx!{
+    println!("{:?}", eval(env.clone(), sx!{
         (if true (quote yes) (quote no))
     }).borrow().downcast_ref::<String>());
+    println!("{:?}", eval(env.clone(), parse("(if true (quote yes) (quote no))").unwrap()).borrow().downcast_ref::<String>());
+    println!("{:?}", eval(env.clone(), parse("(if false (quote yes) (quote no))").unwrap()).borrow().downcast_ref::<String>());
     // println!("{}", RVC(&eval(&env, parse("(quote a)").unwrap()).borrow()));
     // println!("{}", RVC(&eval(&env, parse("(if (quote a) (quote b) (quote c))").unwrap()).borrow()));
     // println!("{}", RVC(&eval(&env, parse("(a (quote 123))").unwrap()).borrow()));

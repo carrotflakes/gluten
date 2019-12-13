@@ -58,11 +58,7 @@ fn parse_value<'a>(cs: &Chars<'a>) -> Result<(R<V>, Chars<'a>), String> {
                 }
             }
             let s: String = vec.iter().collect();
-            match s.as_str() {
-                "true" => Ok((r(true), cs)),
-                "false" => Ok((r(false), cs)),
-                _ => Ok((r(s), cs))
-            }
+            Ok((r(s), cs))
         },
         _ => Err("unexpected EOS".to_string())
     }
