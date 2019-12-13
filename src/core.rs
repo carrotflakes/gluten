@@ -2,40 +2,46 @@ use crate::data::*;
 
 use std::collections::HashMap;
 
-pub struct Env {
+struct EnvInner {
     hash_map: HashMap<String, R<V>>,
-    parent: Option<R<Env>>
+    parent: Option<Env>
 }
 
+pub struct Env(R<EnvInner>);
+
 impl Env {
-    pub fn new() -> R<Env> {
-        r(Env {
+    pub fn new() -> Env {
+        Env(r(EnvInner {
             hash_map: HashMap::new(),
             parent: None
-        })
+        }))
     }
 
-    pub fn insert(renv: &mut R<Self>, s: String, rv: R<V>) {
-        renv.borrow_mut().hash_map.insert(s, rv);
+    pub fn insert(&mut self, s: String, rv: R<V>) {
+        self.0.borrow_mut().hash_map.insert(s, rv);
     }
 
-    pub fn get(renv: &R<Self>, s: &String) -> Option<R<V>> {
-        if let Some(rv) = renv.borrow().hash_map.get(s) {
+    pub fn get(&self, s: &String) -> Option<R<V>> {
+        if let Some(rv) = self.0.borrow().hash_map.get(s) {
             Some(rv.clone())
         } else {
-            renv.borrow().parent.as_ref().and_then(|renv| Env::get(renv, s))
+            self.0.borrow().parent.as_ref().and_then(|env| env.get(s))
         }
     }
 
-    pub fn child(renv: R<Self>) -> R<Env> {
-        r(Env {
+    pub fn child(self) -> Env {
+        Env(r(EnvInner {
             hash_map: HashMap::new(),
-            parent: Some(renv)
-        })
+            parent: Some(self)
+        }))
+    }
+
+    pub fn clone(&self) -> Env {
+        Env(self.0.clone())
     }
 }
 
-fn eval_iter<'a>(env: R<Env>, iter: &mut dyn Iterator<Item=&'a R<V>>) -> R<V> {
+fn eval_iter<'a>(env: Env, iter: &mut impl Iterator<Item=&'a R<V>>) -> R<V> {
     let mut ret = r("nil".to_string()) as R<V>;
     for rv in iter {
         ret = eval(env.clone(), rv.clone());
@@ -43,9 +49,9 @@ fn eval_iter<'a>(env: R<Env>, iter: &mut dyn Iterator<Item=&'a R<V>>) -> R<V> {
     return ret;
 }
 
-pub fn eval(env: R<Env>, rv: R<V>) -> R<V> {
+pub fn eval(env: Env, rv: R<V>) -> R<V> {
     if let Some(ref s) = rv.borrow().downcast_ref::<String>() {
-        if let Some(rv) = Env::get(&env, s.clone()) {
+        if let Some(rv) = env.get(s.clone()) {
             return rv.clone();
         } else {
             panic!("unbound: {:?}", s);
@@ -69,12 +75,12 @@ pub fn eval(env: R<Env>, rv: R<V>) -> R<V> {
                 "let" =>
                     if vec.len() >= 2 {
                         if let Some(v) = vec[1].borrow().downcast_ref::<Vec<R<V>>>() {
-                            let mut env = Env::child(env);
+                            let mut env = env.child();
                             for rv in v.iter() {
                                 if let Some(v) = rv.borrow().downcast_ref::<Vec<R<V>>>() {
                                     if let Some(s) = v[0].borrow().downcast_ref::<String>() {
                                         let rv = eval(env.clone(), v[1].clone());
-                                        Env::insert(&mut env, s.clone(), rv);
+                                        env.insert(s.clone(), rv);
                                         continue;
                                     }
                                 }
@@ -97,7 +103,7 @@ pub fn eval(env: R<Env>, rv: R<V>) -> R<V> {
                         let mut env = env.clone();
                         for (rs, rv) in params.iter().zip(args.iter()) {
                             if let Some(s) = (*rs).borrow().downcast_ref::<String>() {
-                                Env::insert(&mut env, s.clone(), rv.clone());
+                                env.insert(s.clone(), rv.clone());
                                 continue;
                             }
                             panic!("illegal lambda");
