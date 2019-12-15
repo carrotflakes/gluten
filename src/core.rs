@@ -111,6 +111,16 @@ pub fn eval(env: Env, rv: R<V>) -> R<V> {
                         eval_iter(env, &mut body.iter())
                     }) as MyFn);
                 }
+                "set" => {
+                    if vec.len() == 3 {
+                        if let Some(name) = vec[1].borrow().downcast_ref::<String>() {
+                            let rv = eval(env.clone(), vec[2].clone());
+                            env.0.borrow_mut().hash_map.insert(name.clone(), rv.clone());
+                            return rv;
+                        }
+                    }
+                    panic!("illegal set");
+                }
                 _ => {}
             }
         }

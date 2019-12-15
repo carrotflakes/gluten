@@ -38,4 +38,5 @@ fn main() {
     println!("{:?}", eval(env.clone(), parse("(if false (quote yes) (quote no))").unwrap()).borrow().downcast_ref::<String>());
     println!("{:?}", eval(env.clone(), parse("(let ((x false) (y (quote yes)) (n (quote no))) (quote 1) (if x y n))").unwrap()).borrow().downcast_ref::<String>());
     println!("{:?}", eval(env.clone(), parse("((lambda (a b) a b) (quote 1) (quote 2))").unwrap()).borrow().downcast_ref::<String>());
+    println!("{:?}", eval(env.clone(), parse("(do (set f (lambda (a) a)) (f 'aaa))").unwrap()).borrow().downcast_ref::<String>());
 }
