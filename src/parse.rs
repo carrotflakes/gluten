@@ -1,7 +1,7 @@
 use std::str::Chars;
 use crate::data::*;
 
-pub fn parse(src: &str) -> Result<R<V>, String> {
+pub fn parse(src: &str) -> Result<Val, String> {
     parse_value(&src.chars()).map(|x| x.0)
 }
 
@@ -14,15 +14,15 @@ fn skip_whitespace<'a> (cs: &Chars<'a>) -> Chars<'a> {
     }
 }
 
-fn parse_value<'a>(cs: &Chars<'a>) -> Result<(R<V>, Chars<'a>), String> {
+fn parse_value<'a>(cs: &Chars<'a>) -> Result<(Val, Chars<'a>), String> {
     let mut cs = skip_whitespace(cs);
     match cs.next() {
         Some('(') => {
             let mut vec = vec![];
             loop {
                 match parse_value(&cs) {
-                    Ok((rv, ncs)) => {
-                        vec.push(rv);
+                    Ok((val, ncs)) => {
+                        vec.push(val);
                         cs = ncs.clone();
                     },
                     _ => {
@@ -40,8 +40,8 @@ fn parse_value<'a>(cs: &Chars<'a>) -> Result<(R<V>, Chars<'a>), String> {
             Ok((r(vec), cs))
         },
         Some('\'') => {
-            let (rv, ncs) = parse_value(&cs)?;
-            Ok((r(vec![r("quote".to_string()) as R<V>, rv]), ncs))
+            let (val, ncs) = parse_value(&cs)?;
+            Ok((r(vec![r("quote".to_string()) as Val, val]), ncs))
         },
         Some(c) if c.is_alphanumeric() || c == '_' || c == '.' => {
             let mut vec = vec![c];

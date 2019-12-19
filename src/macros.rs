@@ -18,7 +18,7 @@ macro_rules! fun_ {
 #[macro_export]
 macro_rules! fun {
     ($fn:ident $params:tt) => {
-        r(Box::new(|vec: Vec<R<V>>| -> R<V> {
+        r(Box::new(|vec: Vec<Val>| -> Val {
             let mut it = vec.iter();
             fun_!($fn (), it, $params);
             panic!();
@@ -29,9 +29,9 @@ macro_rules! fun {
 #[macro_export]
 macro_rules! sx {
     (($($xs:tt)*)) => {
-        r(vec![$(sx!{$xs}),*]) as R<V>
+        r(vec![$(sx!{$xs}),*]) as Val
     };
     ($x:tt) => {
-        r(stringify!($x).to_string()) as R<V>
+        r(stringify!($x).to_string()) as Val
     };
 }

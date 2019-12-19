@@ -19,7 +19,7 @@ fn main() {
     let mut env = Env::new();
     env.insert("true".to_string(), r(true));
     env.insert("false".to_string(), r(false));
-    env.insert("a".to_string(), r(Box::new(|vec: Vec<R<V>>| {
+    env.insert("a".to_string(), r(Box::new(|vec: Vec<Val>| {
         vec.first().unwrap().clone()
     }) as MyFn));
     env.insert("add".to_string(), fun!(add(i32, i32)));
