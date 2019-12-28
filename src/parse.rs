@@ -43,6 +43,39 @@ fn parse_value<'a>(cs: &Chars<'a>) -> Result<(Val, Chars<'a>), String> {
             let (val, ncs) = parse_value(&cs)?;
             Ok((r(vec![r("quote".to_string()) as Val, val]), ncs))
         },
+        Some('"') => {
+            let mut vec = Vec::new();
+            loop {
+                match cs.next() {
+                    Some(c) if c == '"' => {
+                        break;
+                    },
+                    Some(c) if c == '\\' => {
+                        match cs.next() {
+                            Some(c) => {
+                                vec.push(match c {
+                                    'n' => '\n',
+                                    'r' => '\r',
+                                    't' => '\t',
+                                    _ => c
+                                });
+                            },
+                            None => {
+                                return Err("expect a charactor but found EOS".to_string());
+                            }
+                        }
+                    },
+                    Some(c) => {
+                        vec.push(c);
+                    },
+                    None => {
+                        return Err("closing doublequote".to_string());
+                    }
+                }
+            }
+            let s: String = vec.iter().collect();
+            Ok((r(s), cs))
+        },
         Some(c) if c.is_alphanumeric() || c == '_' || c == '.' => {
             let mut vec = vec![c];
             let mut ncs = cs.clone();

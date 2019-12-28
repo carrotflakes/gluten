@@ -26,6 +26,7 @@ fn main() {
     env.insert("parse_int".to_string(), fun!(parse_int(&String)));
 
     println!("{:?}", eval(env.clone(), parse("(quote a)").unwrap()).borrow().downcast_ref::<String>());
+    println!("{:?}", eval(env.clone(), parse("'\"こんにちは! さようなら\\n改行です\"").unwrap()).borrow().downcast_ref::<String>());
     println!("{:?}", eval(env.clone(), parse("(parse_int (quote 123))").unwrap()).borrow().downcast_ref::<i32>());
     println!("{:?}", eval(env.clone(), parse("(add (parse_int (quote 123)) (parse_int (quote 123)))").unwrap()).borrow().downcast_ref::<i32>());
     println!("{:?}", eval(env.clone(), sx!{
