@@ -9,3 +9,6 @@ pub type MyFn = Box<dyn Fn(Vec<Val>) -> Val>;
 pub fn r<T: 'static>(t: T) -> Val {
     Rc::new(RefCell::new(t)) as Val
 }
+
+#[derive(Debug, Clone, PartialEq, Hash)]
+pub struct Symbol(pub String);

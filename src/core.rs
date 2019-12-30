@@ -52,15 +52,15 @@ fn eval_iter<'a>(env: Env, iter: &mut impl Iterator<Item=&'a Val>) -> Val {
 }
 
 pub fn eval(env: Env, val: Val) -> Val {
-    if let Some(ref s) = val.borrow().downcast_ref::<String>() {
-        if let Some(val) = env.get(s.clone()) {
+    if let Some(ref s) = val.borrow().downcast_ref::<Symbol>() {
+        if let Some(val) = env.get(&s.0) {
             return val.clone();
         } else {
             panic!("unbound: {:?}", s);
         }
     } else if let Some(ref vec) = val.borrow().downcast_ref::<Vec<Val>>() {
-        if let Some(ref s) = vec[0].borrow().downcast_ref::<String>() {
-            match s.as_str() {
+        if let Some(ref s) = vec[0].borrow().downcast_ref::<Symbol>() {
+            match s.0.as_str() {
                 "quote" =>
                     if vec.len() == 2 {
                         return vec[1].clone();
@@ -80,9 +80,9 @@ pub fn eval(env: Env, val: Val) -> Val {
                             let mut env = env.child();
                             for val in v.iter() {
                                 if let Some(v) = val.borrow().downcast_ref::<Vec<Val>>() {
-                                    if let Some(s) = v[0].borrow().downcast_ref::<String>() {
+                                    if let Some(s) = v[0].borrow().downcast_ref::<Symbol>() {
                                         let val = eval(env.clone(), v[1].clone());
-                                        env.insert(s.clone(), val);
+                                        env.insert(s.0.clone(), val);
                                         continue;
                                     }
                                 }
@@ -104,8 +104,8 @@ pub fn eval(env: Env, val: Val) -> Val {
                     return r(Box::new(move |args: Vec<Val>| {
                         let mut env = env.clone();
                         for (rs, val) in params.iter().zip(args.iter()) {
-                            if let Some(s) = (*rs).borrow().downcast_ref::<String>() {
-                                env.insert(s.clone(), val.clone());
+                            if let Some(s) = (*rs).borrow().downcast_ref::<Symbol>() {
+                                env.insert(s.0.clone(), val.clone());
                                 continue;
                             }
                             panic!("illegal lambda");
@@ -115,9 +115,9 @@ pub fn eval(env: Env, val: Val) -> Val {
                 }
                 "set" => {
                     if vec.len() == 3 {
-                        if let Some(name) = vec[1].borrow().downcast_ref::<String>() {
+                        if let Some(name) = vec[1].borrow().downcast_ref::<Symbol>() {
                             let val = eval(env.clone(), vec[2].clone());
-                            env.0.borrow_mut().hash_map.insert(name.clone(), val.clone());
+                            env.0.borrow_mut().hash_map.insert(name.0.clone(), val.clone());
                             return val;
                         }
                     }

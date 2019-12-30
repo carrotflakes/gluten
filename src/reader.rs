@@ -1,4 +1,5 @@
 use std::str::Chars;
+use std::collections::HashMap;
 use crate::data::*;
 
 type AtomReader = Box<dyn FnMut(String) -> Result<Val, String>>;
@@ -43,7 +44,8 @@ impl Reader {
             },
             Some('\'') => {
                 let (val, ncs) = self.parse_value(cs)?;
-                Ok((r(vec![r("quote".to_string()) as Val, val]), ncs))
+                let quote = (self.atom_reader)("quote".to_string()).unwrap();
+                Ok((r(vec![quote, val]), ncs))
             },
             Some('"') => {
                 let mut vec = Vec::new();
@@ -117,7 +119,16 @@ fn skip_whitespace<'a> (cs: Chars<'a>) -> Chars<'a> {
 }
 
 pub fn make_default_atom_reader() -> AtomReader {
-    Box::new(|s: String| -> Result<Val, String> {
-        Ok(r(s))
+    let mut symbol_table = HashMap::<String, Val>::new();
+    Box::new(move |s: String| -> Result<Val, String> {
+        Ok(
+            if let Some(symbol) = symbol_table.get(&s) {
+                symbol.clone()
+            } else {
+                let symbol = r(Symbol(s.clone()));
+                symbol_table.insert(s, symbol.clone()); // TODO: use weak!
+                symbol
+            }
+        )
     })
 }

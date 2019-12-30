@@ -26,19 +26,19 @@ fn main() {
     env.insert("parse_int".to_string(), fun!(parse_int(&String)));
 
     let mut reader = Reader::default();
-    println!("{:?}", eval(env.clone(), reader.parse("(quote a)").unwrap()).borrow().downcast_ref::<String>());
-    println!("{:?}", eval(env.clone(), reader.parse("'\"こんにちは! さようなら\\n改行です\"").unwrap()).borrow().downcast_ref::<String>());
-    println!("{:?}", eval(env.clone(), reader.parse("(parse_int (quote 123))").unwrap()).borrow().downcast_ref::<i32>());
-    println!("{:?}", eval(env.clone(), reader.parse("(add (parse_int (quote 123)) (parse_int (quote 123)))").unwrap()).borrow().downcast_ref::<i32>());
-    println!("{:?}", eval(env.clone(), sx!{
-        (add (parse_int (quote 123)) (parse_int (quote 123)))
-    }).borrow().downcast_ref::<i32>());
-    println!("{:?}", eval(env.clone(), sx!{
+    println!("{:?}", eval(env.clone(), reader.parse("(quote a)").unwrap()).borrow().downcast_ref::<Symbol>());
+    println!("{:?}", eval(env.clone(), reader.parse("\"こんにちは! さようなら\\n改行です\"").unwrap()).borrow().downcast_ref::<String>());
+    println!("{:?}", eval(env.clone(), reader.parse("(parse_int \"123\")").unwrap()).borrow().downcast_ref::<i32>());
+    println!("{:?}", eval(env.clone(), reader.parse("(add (parse_int \"123\") (parse_int \"123\"))").unwrap()).borrow().downcast_ref::<i32>());
+    println!("{:?}", eval(env.clone(), reader.parse(stringify!{
+        (add (parse_int "123") (parse_int "123"))
+    }).unwrap()).borrow().downcast_ref::<i32>());
+    println!("{:?}", eval(env.clone(), reader.parse(stringify!{
         (if true (quote yes) (quote no))
-    }).borrow().downcast_ref::<String>());
-    println!("{:?}", eval(env.clone(), reader.parse("(if true (quote yes) (quote no))").unwrap()).borrow().downcast_ref::<String>());
-    println!("{:?}", eval(env.clone(), reader.parse("(if false (quote yes) (quote no))").unwrap()).borrow().downcast_ref::<String>());
-    println!("{:?}", eval(env.clone(), reader.parse("(let ((x false) (y (quote yes)) (n (quote no))) (quote 1) (if x y n))").unwrap()).borrow().downcast_ref::<String>());
-    println!("{:?}", eval(env.clone(), reader.parse("((lambda (a b) a b) (quote 1) (quote 2))").unwrap()).borrow().downcast_ref::<String>());
-    println!("{:?}", eval(env.clone(), reader.parse("(do (set f (lambda (a) a)) (f 'aaa))").unwrap()).borrow().downcast_ref::<String>());
+    }).unwrap()).borrow().downcast_ref::<Symbol>());
+    println!("{:?}", eval(env.clone(), reader.parse("(if true (quote yes) (quote no))").unwrap()).borrow().downcast_ref::<Symbol>());
+    println!("{:?}", eval(env.clone(), reader.parse("(if false (quote yes) (quote no))").unwrap()).borrow().downcast_ref::<Symbol>());
+    println!("{:?}", eval(env.clone(), reader.parse("(let ((x false) (y (quote yes)) (n (quote no))) (quote 1) (if x y n))").unwrap()).borrow().downcast_ref::<Symbol>());
+    println!("{:?}", eval(env.clone(), reader.parse("((lambda (a b) a b) (quote 1) (quote 2))").unwrap()).borrow().downcast_ref::<Symbol>());
+    println!("{:?}", eval(env.clone(), reader.parse("(do (set f (lambda (a) a)) (f 'aaa))").unwrap()).borrow().downcast_ref::<Symbol>());
 }

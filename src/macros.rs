@@ -21,17 +21,7 @@ macro_rules! fun {
         r(Box::new(|vec: Vec<Val>| -> Val {
             let mut it = vec.iter();
             fun_!($fn (), it, $params);
-            panic!();
+            panic!("type mismatch");
         }) as MyFn)
-    };
-}
-
-#[macro_export]
-macro_rules! sx {
-    (($($xs:tt)*)) => {
-        r(vec![$(sx!{$xs}),*]) as Val
-    };
-    ($x:tt) => {
-        r(stringify!($x).to_string()) as Val
     };
 }
