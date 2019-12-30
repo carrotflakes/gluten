@@ -3,7 +3,7 @@ extern crate gluten;
 
 use gluten::{
     data::*,
-    parse::parse,
+    reader::Reader,
     core::{eval, Env}
 };
 
@@ -25,19 +25,20 @@ fn main() {
     env.insert("add".to_string(), fun!(add(i32, i32)));
     env.insert("parse_int".to_string(), fun!(parse_int(&String)));
 
-    println!("{:?}", eval(env.clone(), parse("(quote a)").unwrap()).borrow().downcast_ref::<String>());
-    println!("{:?}", eval(env.clone(), parse("'\"こんにちは! さようなら\\n改行です\"").unwrap()).borrow().downcast_ref::<String>());
-    println!("{:?}", eval(env.clone(), parse("(parse_int (quote 123))").unwrap()).borrow().downcast_ref::<i32>());
-    println!("{:?}", eval(env.clone(), parse("(add (parse_int (quote 123)) (parse_int (quote 123)))").unwrap()).borrow().downcast_ref::<i32>());
+    let mut reader = Reader::default();
+    println!("{:?}", eval(env.clone(), reader.parse("(quote a)").unwrap()).borrow().downcast_ref::<String>());
+    println!("{:?}", eval(env.clone(), reader.parse("'\"こんにちは! さようなら\\n改行です\"").unwrap()).borrow().downcast_ref::<String>());
+    println!("{:?}", eval(env.clone(), reader.parse("(parse_int (quote 123))").unwrap()).borrow().downcast_ref::<i32>());
+    println!("{:?}", eval(env.clone(), reader.parse("(add (parse_int (quote 123)) (parse_int (quote 123)))").unwrap()).borrow().downcast_ref::<i32>());
     println!("{:?}", eval(env.clone(), sx!{
         (add (parse_int (quote 123)) (parse_int (quote 123)))
     }).borrow().downcast_ref::<i32>());
     println!("{:?}", eval(env.clone(), sx!{
         (if true (quote yes) (quote no))
     }).borrow().downcast_ref::<String>());
-    println!("{:?}", eval(env.clone(), parse("(if true (quote yes) (quote no))").unwrap()).borrow().downcast_ref::<String>());
-    println!("{:?}", eval(env.clone(), parse("(if false (quote yes) (quote no))").unwrap()).borrow().downcast_ref::<String>());
-    println!("{:?}", eval(env.clone(), parse("(let ((x false) (y (quote yes)) (n (quote no))) (quote 1) (if x y n))").unwrap()).borrow().downcast_ref::<String>());
-    println!("{:?}", eval(env.clone(), parse("((lambda (a b) a b) (quote 1) (quote 2))").unwrap()).borrow().downcast_ref::<String>());
-    println!("{:?}", eval(env.clone(), parse("(do (set f (lambda (a) a)) (f 'aaa))").unwrap()).borrow().downcast_ref::<String>());
+    println!("{:?}", eval(env.clone(), reader.parse("(if true (quote yes) (quote no))").unwrap()).borrow().downcast_ref::<String>());
+    println!("{:?}", eval(env.clone(), reader.parse("(if false (quote yes) (quote no))").unwrap()).borrow().downcast_ref::<String>());
+    println!("{:?}", eval(env.clone(), reader.parse("(let ((x false) (y (quote yes)) (n (quote no))) (quote 1) (if x y n))").unwrap()).borrow().downcast_ref::<String>());
+    println!("{:?}", eval(env.clone(), reader.parse("((lambda (a b) a b) (quote 1) (quote 2))").unwrap()).borrow().downcast_ref::<String>());
+    println!("{:?}", eval(env.clone(), reader.parse("(do (set f (lambda (a) a)) (f 'aaa))").unwrap()).borrow().downcast_ref::<String>());
 }
