@@ -2,7 +2,7 @@ use std::str::Chars;
 use std::collections::HashMap;
 use crate::data::*;
 
-type AtomReader = Box<dyn FnMut(String) -> Result<Val, String>>;
+pub type AtomReader = Box<dyn FnMut(String) -> Result<Val, String>>;
 
 pub struct Reader {
     atom_reader: AtomReader
@@ -80,12 +80,12 @@ impl Reader {
                 let s: String = vec.iter().collect();
                 Ok((r(s), cs))
             },
-            Some(c) if c.is_alphanumeric() || c == '_' || c == '.' => {
+            Some(c) if !c.is_whitespace() && !['(', ')', '\'', '"'].contains(&c) => {
                 let mut vec = vec![c];
                 let mut ncs = cs.clone();
                 loop {
                     match ncs.next() {
-                        Some(c) if c.is_alphanumeric() || c == '_' || c == '.' => {
+                        Some(c) if !c.is_whitespace() && !['(', ')', '\'', '"'].contains(&c) => {
                             vec.push(c);
                             cs = ncs.clone();
                         },
