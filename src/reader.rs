@@ -25,6 +25,26 @@ impl Reader {
                 }
             })
     }
+
+    pub fn parse_top_level(&mut self, src: &str) -> Result<Vec<Val>, String> {
+        let mut vec = Vec::new();
+        let mut cs = src.chars().peekable();
+        loop {
+            match self.parse_value(cs) {
+                Ok((val, ncs)) => {
+                    vec.push(val);
+                    cs = ncs;
+                    skip_whitespace(&mut cs);
+                    if let None = cs.peek() {
+                        return Ok(vec);
+                    }
+                },
+                Err(s) => {
+                    return Err(s);
+                }
+            }
+        }
+    }
     
     fn parse_value<'a>(&mut self, mut cs: Peekable<Chars<'a>>) -> Result<(Val, Peekable<Chars<'a>>), String> {
         skip_whitespace(&mut cs);
@@ -105,7 +125,8 @@ impl Reader {
                 let s: String = vec.iter().collect();
                 (self.atom_reader)(s).map(|val| (val, cs))
             },
-            _ => Err("unexpected EOS".to_string())
+            Some(c) => Err(format!("unexpected character: {:?}", c)),
+            None => Err("unexpected EOS".to_string())
         }
     }
 }

@@ -41,4 +41,7 @@ fn main() {
     println!("{:?}", eval(env.clone(), reader.parse("(let ((x false) (y (quote yes)) (n (quote no))) (quote 1) (if x y n))").unwrap()).borrow().downcast_ref::<Symbol>());
     println!("{:?}", eval(env.clone(), reader.parse("((lambda (a b) a b) (quote 1) (quote 2))").unwrap()).borrow().downcast_ref::<Symbol>());
     println!("{:?}", eval(env.clone(), reader.parse("(do (set f (lambda (a) a)) (f 'aaa))").unwrap()).borrow().downcast_ref::<Symbol>());
+    for x in reader.parse_top_level("'1 '2 '3 (quote b) 'add").unwrap() {
+        println!("{:?}", eval(env.clone(), x).borrow().downcast_ref::<Symbol>());
+    }
 }
