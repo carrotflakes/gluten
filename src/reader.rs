@@ -15,7 +15,15 @@ impl Reader {
     }
 
     pub fn parse(&mut self, src: &str) -> Result<Val, String> {
-        self.parse_value(src.chars().peekable()).map(|x| x.0)
+        self.parse_value(src.chars().peekable())
+            .and_then(|mut x| {
+                skip_whitespace(&mut x.1);
+                if x.1.count() == 0 {
+                    Ok(x.0)
+                } else {
+                    Err("expect EOS, but found some character".to_string())
+                }
+            })
     }
     
     fn parse_value<'a>(&mut self, mut cs: Peekable<Chars<'a>>) -> Result<(Val, Peekable<Chars<'a>>), String> {
