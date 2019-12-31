@@ -1,4 +1,5 @@
 use std::str::Chars;
+use std::iter::Peekable;
 use std::collections::HashMap;
 use crate::data::*;
 
@@ -14,11 +15,11 @@ impl Reader {
     }
 
     pub fn parse(&mut self, src: &str) -> Result<Val, String> {
-        self.parse_value(src.chars()).map(|x| x.0)
+        self.parse_value(src.chars().peekable()).map(|x| x.0)
     }
     
-    fn parse_value<'a>(&mut self, cs: Chars<'a>) -> Result<(Val, Chars<'a>), String> {
-        let mut cs = skip_whitespace(cs);
+    fn parse_value<'a>(&mut self, mut cs: Peekable<Chars<'a>>) -> Result<(Val, Peekable<Chars<'a>>), String> {
+        skip_whitespace(&mut cs);
         match cs.next() {
             Some('(') => {
                 let mut vec = vec![];
@@ -33,7 +34,7 @@ impl Reader {
                         }
                     }
                 }
-                cs = skip_whitespace(cs);
+                skip_whitespace(&mut cs);
                 while let Some(c) = cs.next() {
                     if c == ')' {
                         break;
@@ -82,12 +83,11 @@ impl Reader {
             },
             Some(c) if !c.is_whitespace() && !['(', ')', '\'', '"'].contains(&c) => {
                 let mut vec = vec![c];
-                let mut ncs = cs.clone();
                 loop {
-                    match ncs.next() {
-                        Some(c) if !c.is_whitespace() && !['(', ')', '\'', '"'].contains(&c) => {
-                            vec.push(c);
-                            cs = ncs.clone();
+                    match cs.peek() {
+                        Some(c) if !c.is_whitespace() && !['(', ')', '\'', '"'].contains(c) => {
+                            vec.push(*c);
+                            cs.next();
                         },
                         _ => {
                             break;
@@ -109,12 +109,13 @@ impl Default for Reader {
 }
 
 
-fn skip_whitespace<'a> (cs: Chars<'a>) -> Chars<'a> {
-    let mut ncs = cs.clone();
-    match ncs.next() {
-        Some(c) if c.is_whitespace() =>
-            skip_whitespace(ncs),
-        _ => cs
+fn skip_whitespace<'a> (cs: &mut Peekable<Chars<'a>>) {
+    while let Some(c) = cs.peek() {
+        if c.is_whitespace() {
+            cs.next();
+        } else {
+            return;
+        }
     }
 }
 
