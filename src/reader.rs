@@ -109,11 +109,11 @@ impl Reader {
                 let s: String = vec.iter().collect();
                 Ok((r(s), cs))
             },
-            Some(c) if !c.is_whitespace() && !['(', ')', '\'', '"'].contains(&c) => {
+            Some(c) if !c.is_whitespace() && !['(', ')', '\'', '"', ';'].contains(&c) => {
                 let mut vec = vec![c];
                 loop {
                     match cs.peek() {
-                        Some(c) if !c.is_whitespace() && !['(', ')', '\'', '"'].contains(c) => {
+                        Some(c) if !c.is_whitespace() && !['(', ')', '\'', '"', ';'].contains(c) => {
                             vec.push(*c);
                             cs.next();
                         },
@@ -140,7 +140,14 @@ impl Default for Reader {
 
 fn skip_whitespace<'a> (cs: &mut Peekable<Chars<'a>>) {
     while let Some(c) = cs.peek() {
-        if c.is_whitespace() {
+        if *c == ';' {
+            while match cs.next() {
+                    Some('\n') => false,
+                    Some('\r') => false,
+                    Some(_) => true,
+                    None => false
+                } {}
+        } else if c.is_whitespace() {
             cs.next();
         } else {
             return;

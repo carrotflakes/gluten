@@ -44,4 +44,16 @@ fn main() {
     for x in reader.parse_top_level("'1 '2 '3 (quote b) 'add").unwrap() {
         println!("{:?}", eval(env.clone(), x).borrow().downcast_ref::<Symbol>());
     }
+    for x in reader.parse_top_level(r"
+    ; hello
+    '1
+    '2
+    ; it's a comment
+    '3
+    (quote b)
+    'add
+    ; bye!
+    ").unwrap() {
+        println!("{:?}", eval(env.clone(), x).borrow().downcast_ref::<Symbol>());
+    }
 }
