@@ -31,10 +31,10 @@ impl Env {
         }
     }
 
-    pub fn child(self) -> Env {
+    pub fn child(&self) -> Env {
         Env(Rc::new(RefCell::new(EnvInner {
             hash_map: HashMap::new(),
-            parent: Some(self)
+            parent: Some(self.clone())
         })))
     }
 
@@ -102,7 +102,7 @@ pub fn eval(env: Env, val: Val) -> Val {
                     };
                     let body: Vec<Val> = vec.iter().skip(2).map(|val| val.clone()).collect();
                     return r(Box::new(move |args: Vec<Val>| {
-                        let mut env = env.clone();
+                        let mut env = env.child();
                         for (rs, val) in params.iter().zip(args.iter()) {
                             if let Some(s) = (*rs).borrow().downcast_ref::<Symbol>() {
                                 env.insert(s.0.clone(), val.clone());
