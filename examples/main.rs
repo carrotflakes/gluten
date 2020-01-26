@@ -17,15 +17,15 @@ fn add(a: i32, b: i32) -> i32 {
 
 fn main() {
     let mut env = Env::new();
-    env.insert("true".to_string(), r(true));
-    env.insert("false".to_string(), r(false));
-    env.insert("a".to_string(), r(Box::new(|vec: Vec<Val>| {
+    let mut reader = Reader::default();
+    env.insert(reader.intern("true"), r(true));
+    env.insert(reader.intern("false"), r(false));
+    env.insert(reader.intern("a"), r(Box::new(|vec: Vec<Val>| {
         vec.first().unwrap().clone()
     }) as MyFn));
-    env.insert("add".to_string(), fun!(add(i32, i32)));
-    env.insert("parse_int".to_string(), fun!(parse_int(&String)));
+    env.insert(reader.intern("add"), fun!(add(i32, i32)));
+    env.insert(reader.intern("parse_int"), fun!(parse_int(&String)));
 
-    let mut reader = Reader::default();
     println!("{:?}", eval(env.clone(), reader.parse("(quote a)").unwrap()).borrow().downcast_ref::<Symbol>());
     println!("{:?}", eval(env.clone(), reader.parse("\"こんにちは! さようなら\\n改行です\"").unwrap()).borrow().downcast_ref::<String>());
     println!("{:?}", eval(env.clone(), reader.parse("(parse_int \"123\")").unwrap()).borrow().downcast_ref::<i32>());

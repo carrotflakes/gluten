@@ -1,3 +1,4 @@
+pub mod string_pool;
 pub mod data;
 pub mod reader;
 pub mod core;

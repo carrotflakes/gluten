@@ -5,7 +5,7 @@ use crate::data::*;
 use std::collections::HashMap;
 
 struct EnvInner {
-    hash_map: HashMap<String, Val>,
+    hash_map: HashMap<Symbol, Val>,
     parent: Option<Env>
 }
 
@@ -19,11 +19,11 @@ impl Env {
         })))
     }
 
-    pub fn insert(&mut self, s: String, val: Val) {
+    pub fn insert(&mut self, s: Symbol, val: Val) {
         self.0.borrow_mut().hash_map.insert(s, val);
     }
 
-    pub fn get(&self, s: &String) -> Option<Val> {
+    pub fn get(&self, s: &Symbol) -> Option<Val> {
         if let Some(val) = self.0.borrow().hash_map.get(s) {
             Some(val.clone())
         } else {
@@ -53,7 +53,7 @@ fn eval_iter<'a>(env: Env, iter: &mut impl Iterator<Item=&'a Val>) -> Val {
 
 pub fn eval(env: Env, val: Val) -> Val {
     if let Some(ref s) = val.borrow().downcast_ref::<Symbol>() {
-        if let Some(val) = env.get(&s.0) {
+        if let Some(val) = env.get(s) {
             return val.clone();
         } else {
             panic!("unbound: {:?}", s);
@@ -82,7 +82,7 @@ pub fn eval(env: Env, val: Val) -> Val {
                                 if let Some(v) = val.borrow().downcast_ref::<Vec<Val>>() {
                                     if let Some(s) = v[0].borrow().downcast_ref::<Symbol>() {
                                         let val = eval(env.clone(), v[1].clone());
-                                        env.insert(s.0.clone(), val);
+                                        env.insert(s.clone(), val);
                                         continue;
                                     }
                                 }
@@ -105,7 +105,7 @@ pub fn eval(env: Env, val: Val) -> Val {
                         let mut env = env.child();
                         for (rs, val) in params.iter().zip(args.iter()) {
                             if let Some(s) = (*rs).borrow().downcast_ref::<Symbol>() {
-                                env.insert(s.0.clone(), val.clone());
+                                env.insert(s.clone(), val.clone());
                                 continue;
                             }
                             panic!("illegal lambda");
@@ -117,7 +117,7 @@ pub fn eval(env: Env, val: Val) -> Val {
                     if vec.len() == 3 {
                         if let Some(name) = vec[1].borrow().downcast_ref::<Symbol>() {
                             let val = eval(env.clone(), vec[2].clone());
-                            env.0.borrow_mut().hash_map.insert(name.0.clone(), val.clone());
+                            env.0.borrow_mut().hash_map.insert(name.clone(), val.clone());
                             return val;
                         }
                     }

@@ -1,17 +1,21 @@
 use std::str::Chars;
 use std::iter::Peekable;
-use std::collections::HashMap;
 use crate::data::*;
+use crate::string_pool::StringPool;
 
-pub type AtomReader = Box<dyn FnMut(String) -> Result<Val, String>>;
+pub type AtomReader = Box<dyn FnMut(&mut StringPool, &str) -> Result<Val, String>>;
 
 pub struct Reader {
-    atom_reader: AtomReader
+    atom_reader: AtomReader,
+    string_pool: StringPool
 }
 
 impl Reader {
     pub fn new(atom_reader: AtomReader) -> Self {
-        Reader {atom_reader}
+        Reader {
+            atom_reader,
+            string_pool: StringPool::new()
+        }
     }
 
     pub fn parse(&mut self, src: &str) -> Result<Val, String> {
@@ -73,7 +77,7 @@ impl Reader {
             },
             Some('\'') => {
                 let (val, ncs) = self.parse_value(cs)?;
-                let quote = (self.atom_reader)("quote".to_string()).unwrap();
+                let quote = (self.atom_reader)(&mut self.string_pool, "quote").unwrap();
                 Ok((r(vec![quote, val]), ncs))
             },
             Some('"') => {
@@ -123,17 +127,21 @@ impl Reader {
                     }
                 }
                 let s: String = vec.iter().collect();
-                (self.atom_reader)(s).map(|val| (val, cs))
+                (self.atom_reader)(&mut self.string_pool, &s).map(|val| (val, cs))
             },
             Some(c) => Err(format!("unexpected character: {:?}", c)),
             None => Err("unexpected EOS".to_string())
         }
     }
+
+    pub fn intern(&mut self, s: &str) -> Symbol {
+        Symbol(self.string_pool.intern(s))
+    }
 }
 
 impl Default for Reader {
     fn default() -> Self {
-        Reader::new(make_default_atom_reader())
+        Reader::new(Box::new(default_atom_reader))
     }
 }
 
@@ -155,17 +163,6 @@ fn skip_whitespace<'a> (cs: &mut Peekable<Chars<'a>>) {
     }
 }
 
-pub fn make_default_atom_reader() -> AtomReader {
-    let mut symbol_table = HashMap::<String, Val>::new();
-    Box::new(move |s: String| -> Result<Val, String> {
-        Ok(
-            if let Some(symbol) = symbol_table.get(&s) {
-                symbol.clone()
-            } else {
-                let symbol = r(Symbol(s.clone()));
-                symbol_table.insert(s, symbol.clone()); // TODO: use weak!
-                symbol
-            }
-        )
-    })
+pub fn default_atom_reader(sp: &mut StringPool, s: &str) -> Result<Val, String> {
+    Ok(r(Symbol(sp.intern(s))))
 }
