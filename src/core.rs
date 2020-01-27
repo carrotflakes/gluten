@@ -138,3 +138,50 @@ pub fn eval(env: Env, val: Val) -> Val {
         return val.clone();
     }
 }
+
+pub struct Macro(pub Box<dyn Fn(&mut Env, Vec<Val>) -> Val>);
+
+pub fn macro_expand(env: &mut Env, val: Val) -> Val {
+    if let Some(ref vec) = val.borrow().downcast_ref::<Vec<Val>>() {
+        let expaned_first = macro_expand(env, vec[0].clone());
+        if let Some(ref s) = expaned_first.borrow().downcast_ref::<Symbol>() {
+            if let Some(val) = env.get(s) {
+                if let Some(ref mac) = val.borrow().downcast_ref::<Macro>() {
+                    let args = vec.iter().skip(1).map(|v| v.clone()).collect();
+                    let expanded = (mac.0)(env, args);
+                    return macro_expand(env, expanded);
+                }
+            }
+        }
+        let args = vec.iter().skip(1).map(|v| macro_expand(env, v.clone()));
+        return r(vec![expaned_first].into_iter().chain(args).collect::<Vec<Val>>());
+    }
+    val
+}
+
+pub fn defmacro(env: &mut Env, vec: Vec<Val>) -> Val {
+    let name = if let Some(name) = vec[0].borrow().downcast_ref::<Symbol>() {
+        name.clone()
+    } else {
+        panic!("macro name must be a symbol");
+    };
+    let params = if let Some(params) = vec[1].borrow().downcast_ref::<Vec<Val>>() {
+        params.clone()
+    } else {
+        panic!("illegal macro params");
+    };
+    let body: Vec<Val> = vec.iter().skip(2).map(|val| val.clone()).collect();
+    let mac = r(Macro(Box::new(move |env: &mut Env, args: Vec<Val>| {
+        let mut env = env.child();
+        for (rs, val) in params.iter().zip(args.iter()) {
+            if let Some(s) = (*rs).borrow().downcast_ref::<Symbol>() {
+                env.insert(s.clone(), val.clone());
+                continue;
+            }
+            panic!("illegal macro");
+        }
+        eval_iter(env, &mut body.iter())
+    })));
+    env.insert(name, mac.clone());
+    mac
+}

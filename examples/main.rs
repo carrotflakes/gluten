@@ -4,7 +4,7 @@ extern crate gluten;
 use gluten::{
     data::*,
     reader::Reader,
-    core::{eval, Env}
+    core::{eval, Env, Macro, macro_expand, defmacro}
 };
 
 fn parse_int(s: &String) -> i32 {
@@ -25,6 +25,9 @@ fn main() {
     }) as MyFn));
     env.insert(reader.intern("add"), fun!(add(i32, i32)));
     env.insert(reader.intern("parse_int"), fun!(parse_int(&String)));
+    env.insert(reader.intern("vec"), r(Box::new(|vec: Vec<Val>| {
+        r(vec)
+    }) as MyFn));
 
     println!("{:?}", eval(env.clone(), reader.parse("(quote a)").unwrap()).borrow().downcast_ref::<Symbol>());
     println!("{:?}", eval(env.clone(), reader.parse("\"こんにちは! さようなら\\n改行です\"").unwrap()).borrow().downcast_ref::<String>());
@@ -56,4 +59,17 @@ fn main() {
     ").unwrap() {
         println!("{:?}", eval(env.clone(), x).borrow().downcast_ref::<Symbol>());
     }
+
+    let hello_macro = reader.parse("(quote hello_macro)").unwrap();
+    env.insert(reader.intern("hello_macro"), r(Macro(Box::new(move |_: &mut Env, _vec: Vec<Val>| {
+        hello_macro.clone()
+    }))));
+    let read = reader.parse("(hello_macro)").unwrap();
+    let macro_expanded = macro_expand(&mut env, read);
+    println!("{:?}", eval(env.clone(), macro_expanded).borrow().downcast_ref::<Symbol>());
+
+    env.insert(reader.intern("defmacro"), r(Macro(Box::new(defmacro))));
+    let read = reader.parse("(do (defmacro my_quote (x) (vec 'quote x)) (my_quote aaa))").unwrap();
+    let macro_expanded = macro_expand(&mut env, read);
+    println!("{:?}", eval(env.clone(), macro_expanded).borrow().downcast_ref::<Symbol>());
 }
