@@ -1,21 +1,22 @@
 use std::rc::Rc;
 use std::cell::RefCell;
 use crate::data::*;
+use crate::reader::Reader;
 
 use std::collections::HashMap;
 
 struct EnvInner {
     hash_map: HashMap<Symbol, Val>,
-    parent: Option<Env>
+    parent: Result<Env, R<Reader>>
 }
 
 pub struct Env(R<EnvInner>);
 
 impl Env {
-    pub fn new() -> Env {
+    pub fn new(reader: R<Reader>) -> Env {
         Env(Rc::new(RefCell::new(EnvInner {
             hash_map: HashMap::new(),
-            parent: None
+            parent: Err(reader)
         })))
     }
 
@@ -27,14 +28,21 @@ impl Env {
         if let Some(val) = self.0.borrow().hash_map.get(s) {
             Some(val.clone())
         } else {
-            self.0.borrow().parent.as_ref().and_then(|env| env.get(s))
+            self.0.borrow().parent.as_ref().ok().and_then(|env| env.get(s))
+        }
+    }
+
+    pub fn reader(&self) -> R<Reader> {
+        match self.0.borrow().parent {
+            Ok(ref parent) => parent.reader(),
+            Err(ref reader) => reader.clone()
         }
     }
 
     pub fn child(&self) -> Env {
         Env(Rc::new(RefCell::new(EnvInner {
             hash_map: HashMap::new(),
-            parent: Some(self.clone())
+            parent: Ok(self.clone())
         })))
     }
 
