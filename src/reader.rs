@@ -77,7 +77,7 @@ impl Reader {
             },
             Some('\'') => {
                 let (val, ncs) = self.parse_value(cs)?;
-                let quote = (self.atom_reader)(&mut self.string_pool, "quote").unwrap();
+                let quote = r(Symbol(self.string_pool.intern("quote")));
                 Ok((r(vec![quote, val]), ncs))
             },
             Some('"') => {
