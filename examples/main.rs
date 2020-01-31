@@ -1,7 +1,7 @@
 #[macro_use]
 extern crate gluten;
 
-use std::fmt::Write;
+use std::io::Write;
 use gluten::{
     data::*,
     reader::Reader,
@@ -16,48 +16,69 @@ fn add(a: i32, b: i32) -> i32 {
     a + b
 }
 
-fn fmt(val: &Val) -> String {
-    fn f(write: &mut String, val: &Val) {
-        let val = val.borrow();
-        if let Some(s) = val.downcast_ref::<Symbol>() {
-            write!(write, "{}", s.0.as_ref()).unwrap();
-        } else if let Some(s) = val.downcast_ref::<String>() {
-            write!(write, "{:?}", s).unwrap();
-        } else if let Some(vec) = val.downcast_ref::<Vec<Val>>() {
-            write!(write, "(").unwrap();
-            let mut first = true;
-            for val in vec {
-                if first {
-                    first = false; 
-                } else {
-                    write!(write, " ").unwrap();
-                }
-                f(write, val);
+fn write_val<T: Write>(write: &mut T, val: &Val) {
+    let val = val.borrow();
+    if let Some(s) = val.downcast_ref::<Symbol>() {
+        write!(write, "{}", s.0.as_ref()).unwrap();
+    } else if let Some(s) = val.downcast_ref::<String>() {
+        write!(write, "{:?}", s).unwrap();
+    } else if let Some(s) = val.downcast_ref::<i32>() {
+        write!(write, "{:?}", s).unwrap();
+    } else if let Some(vec) = val.downcast_ref::<Vec<Val>>() {
+        write!(write, "(").unwrap();
+        let mut first = true;
+        for val in vec {
+            if first {
+                first = false; 
+            } else {
+                write!(write, " ").unwrap();
             }
-            write!(write, ")").unwrap();
-        } else {
-            write!(write, "#?#").unwrap();
+            write_val(write, val);
+        }
+        write!(write, ")").unwrap();
+    } else {
+        write!(write, "#?#").unwrap();
+    }
+}
+
+struct Gltn(Env);
+
+impl Gltn {
+    fn new() -> Gltn {
+        let reader = std::rc::Rc::new(std::cell::RefCell::new(Reader::default()));
+        Gltn(Env::new(reader.clone()))
+    }
+
+    fn insert(&mut self, str: &str, val: Val) {
+        let sym = self.0.reader().borrow_mut().intern(str);
+        self.0.insert(sym, val);
+    }
+
+    fn rep(&mut self, str: &str) {
+        println!("> {}", str);
+        let forms = self.0.reader().borrow_mut().parse_top_level(str).unwrap();
+        for form in forms {
+            let form = macro_expand(&mut self.0, form);
+            let form = eval(self.0.clone(), form);
+            write_val(&mut std::io::stdout().lock(), &form);
+            println!("");
         }
     }
-    let mut s = String::new();
-    f(&mut s, val);
-    s
 }
 
 fn main() {
-    let reader = std::rc::Rc::new(std::cell::RefCell::new(Reader::default()));
-    let mut env = Env::new(reader.clone());
-    env.insert(reader.borrow_mut().intern("true"), r(true));
-    env.insert(reader.borrow_mut().intern("false"), r(false));
-    env.insert(reader.borrow_mut().intern("a"), r(Box::new(|vec: Vec<Val>| {
+    let mut gltn = Gltn::new();
+    gltn.insert("true", r(true));
+    gltn.insert("false", r(false));
+    gltn.insert("a", r(Box::new(|vec: Vec<Val>| {
         vec.first().unwrap().clone()
     }) as MyFn));
-    env.insert(reader.borrow_mut().intern("add"), fun!(add(i32, i32)));
-    env.insert(reader.borrow_mut().intern("parse_int"), fun!(parse_int(&String)));
-    env.insert(reader.borrow_mut().intern("vec"), r(Box::new(|vec: Vec<Val>| {
+    gltn.insert("add", fun!(add(i32, i32)));
+    gltn.insert("parse_int", fun!(parse_int(&String)));
+    gltn.insert("vec", r(Box::new(|vec: Vec<Val>| {
         r(vec)
     }) as MyFn));
-    env.insert(reader.borrow_mut().intern("append"), r(Box::new(|vec: Vec<Val>| {
+    gltn.insert("append", r(Box::new(|vec: Vec<Val>| {
         let mut ret = vec![];
         for v in vec.into_iter() {
             if let Some(ref v) = v.borrow().downcast_ref::<Vec<Val>>() {
@@ -68,41 +89,39 @@ fn main() {
         }
         r(ret)
     }) as MyFn));
-    env.insert(reader.borrow_mut().intern("eq"), r(Box::new(|vec: Vec<Val>| {
+    gltn.insert("eq", r(Box::new(|vec: Vec<Val>| {
         r(std::rc::Rc::ptr_eq(&vec[0], &vec[1]))
     }) as MyFn));
-    env.insert(reader.borrow_mut().intern("symbol?"), r(Box::new(|vec: Vec<Val>| {
+    gltn.insert("symbol?", r(Box::new(|vec: Vec<Val>| {
         r(vec[0].borrow().is::<Symbol>())
     }) as MyFn));
-    env.insert(reader.borrow_mut().intern("vec?"), r(Box::new(|vec: Vec<Val>| {
+    gltn.insert("vec?", r(Box::new(|vec: Vec<Val>| {
         r(vec[0].borrow().is::<Vec<Val>>())
     }) as MyFn));
-    env.insert(reader.borrow_mut().intern("vec-len"), r(Box::new(|vec: Vec<Val>| {
+    gltn.insert("vec-len", r(Box::new(|vec: Vec<Val>| {
         r(vec[0].borrow().downcast_ref::<Vec<Val>>().unwrap().len() as i32)
     }) as MyFn));
-    env.insert(reader.borrow_mut().intern("vec-get"), r(Box::new(|vec: Vec<Val>| {
+    gltn.insert("vec-get", r(Box::new(|vec: Vec<Val>| {
         r(vec[0].borrow().downcast_ref::<Vec<Val>>().unwrap()[*vec[1].borrow().downcast_ref::<i32>().unwrap() as usize].clone())
     }) as MyFn));
 
-    println!("{:?}", eval(env.clone(), reader.borrow_mut().parse("(quote a)").unwrap()).borrow().downcast_ref::<Symbol>());
-    println!("{:?}", eval(env.clone(), reader.borrow_mut().parse("\"こんにちは! さようなら\\n改行です\"").unwrap()).borrow().downcast_ref::<String>());
-    println!("{:?}", eval(env.clone(), reader.borrow_mut().parse("(parse_int \"123\")").unwrap()).borrow().downcast_ref::<i32>());
-    println!("{:?}", eval(env.clone(), reader.borrow_mut().parse("(add (parse_int \"123\") (parse_int \"123\"))").unwrap()).borrow().downcast_ref::<i32>());
-    println!("{:?}", eval(env.clone(), reader.borrow_mut().parse(stringify!{
+    gltn.rep("(quote a)");
+    gltn.rep("\"こんにちは! さようなら\\n改行です\"");
+    gltn.rep("(parse_int \"123\")");
+    gltn.rep("(add (parse_int \"123\") (parse_int \"123\"))");
+    gltn.rep(stringify!{
         (add (parse_int "123") (parse_int "123"))
-    }).unwrap()).borrow().downcast_ref::<i32>());
-    println!("{:?}", eval(env.clone(), reader.borrow_mut().parse(stringify!{
+    });
+    gltn.rep(stringify!{
         (if true (quote yes) (quote no))
-    }).unwrap()).borrow().downcast_ref::<Symbol>());
-    println!("{:?}", eval(env.clone(), reader.borrow_mut().parse("(if true (quote yes) (quote no))").unwrap()).borrow().downcast_ref::<Symbol>());
-    println!("{:?}", eval(env.clone(), reader.borrow_mut().parse("(if false (quote yes) (quote no))").unwrap()).borrow().downcast_ref::<Symbol>());
-    println!("{:?}", eval(env.clone(), reader.borrow_mut().parse("(let ((x false) (y (quote yes)) (n (quote no))) (quote 1) (if x y n))").unwrap()).borrow().downcast_ref::<Symbol>());
-    println!("{:?}", eval(env.clone(), reader.borrow_mut().parse("((lambda (a b) a b) (quote 1) (quote 2))").unwrap()).borrow().downcast_ref::<Symbol>());
-    println!("{:?}", eval(env.clone(), reader.borrow_mut().parse("(do (set f (lambda (a) a)) (f 'aaa))").unwrap()).borrow().downcast_ref::<Symbol>());
-    for x in reader.borrow_mut().parse_top_level("'1 '2 '3 (quote b) 'add").unwrap() {
-        println!("{:?}", eval(env.clone(), x).borrow().downcast_ref::<Symbol>());
-    }
-    for x in reader.borrow_mut().parse_top_level(r"
+    });
+    gltn.rep("(if true (quote yes) (quote no))");
+    gltn.rep("(if false (quote yes) (quote no))");
+    gltn.rep("(let ((x false) (y (quote yes)) (n (quote no))) (quote 1) (if x y n))");
+    gltn.rep("((lambda (a b) a b) (quote 1) (quote 2))");
+    gltn.rep("(do (set f (lambda (a) a)) (f 'aaa))");
+    gltn.rep("'1 '2 '3 (quote b) 'add");
+    gltn.rep(r"
     ; hello
     '1
     '2
@@ -111,25 +130,19 @@ fn main() {
     (quote b)
     'add
     ; bye!
-    ").unwrap() {
-        println!("{:?}", eval(env.clone(), x).borrow().downcast_ref::<Symbol>());
-    }
+    ");
 
-    let hello_macro = reader.borrow_mut().parse("(quote hello_macro)").unwrap();
-    env.insert(reader.borrow_mut().intern("hello_macro"), r(Macro(Box::new(move |_: &mut Env, _vec: Vec<Val>| {
+    let hello_macro = gltn.0.reader().borrow_mut().parse("(quote hello_macro)").unwrap();
+    gltn.insert("hello_macro", r(Macro(Box::new(move |_: &mut Env, _vec: Vec<Val>| {
         hello_macro.clone()
     }))));
-    let read = reader.borrow_mut().parse("(hello_macro)").unwrap();
-    let macro_expanded = macro_expand(&mut env, read);
-    println!("{:?}", eval(env.clone(), macro_expanded).borrow().downcast_ref::<Symbol>());
+    gltn.rep("(hello_macro)");
 
-    env.insert(reader.borrow_mut().intern("defmacro"), r(Macro(Box::new(defmacro))));
-    let read = reader.borrow_mut().parse("(do (defmacro my_quote (x) (vec 'quote x)) (my_quote aaa))").unwrap();
-    let macro_expanded = macro_expand(&mut env, read);
-    println!("{:?}", eval(env.clone(), macro_expanded).borrow().downcast_ref::<Symbol>());
-    
-    env.insert(
-        reader.borrow_mut().intern("quasiquote"),
+    gltn.insert("defmacro", r(Macro(Box::new(defmacro))));
+    gltn.rep("(do (defmacro my_quote (x) (vec 'quote x)) (my_quote aaa))");
+
+    gltn.insert(
+        "quasiquote",
         r(Macro(Box::new(move |env: &mut Env, vec: Vec<Val>| {
             fn f(env: &mut Env, val: &Val) -> Val {
                 enum Q {
@@ -182,14 +195,8 @@ fn main() {
             }
             f(env, &vec[0])
         }))));
-    let read = reader.borrow_mut().parse("
-        (quasiquote (1 (unquote '2) (unquote-splicing (vec '3 (quasiquote 4))))) ; `(1 ,2 ,@(vec 3 4)) => (append (vec (quote 1) 2) (vec 3 4))
-    ").unwrap();
-    let macro_expanded = macro_expand(&mut env, read);
-    println!("{}", fmt(&eval(env.clone(), macro_expanded)));
-    let read = reader.borrow_mut().parse("
-        `(1 ,'2 ,@(vec '3 `4))
-    ").unwrap();
-    let macro_expanded = macro_expand(&mut env, read);
-    println!("{}", fmt(&eval(env.clone(), macro_expanded)));
+    gltn.rep("
+        (quasiquote (1 (unquote '2) (unquote-splicing (vec '3 (quasiquote 4)))))
+    ");
+    gltn.rep("`(1 ,'2 ,@(vec '3 `4))");
 }
