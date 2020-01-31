@@ -1,6 +1,7 @@
 #[macro_use]
 extern crate gluten;
 
+use std::fmt::Write;
 use gluten::{
     data::*,
     reader::Reader,
@@ -13,6 +14,34 @@ fn parse_int(s: &String) -> i32 {
 
 fn add(a: i32, b: i32) -> i32 {
     a + b
+}
+
+fn fmt(val: &Val) -> String {
+    fn f(write: &mut String, val: &Val) {
+        let val = val.borrow();
+        if let Some(s) = val.downcast_ref::<Symbol>() {
+            write!(write, "{}", s.0.as_ref()).unwrap();
+        } else if let Some(s) = val.downcast_ref::<String>() {
+            write!(write, "{:?}", s).unwrap();
+        } else if let Some(vec) = val.downcast_ref::<Vec<Val>>() {
+            write!(write, "(").unwrap();
+            let mut first = true;
+            for val in vec {
+                if first {
+                    first = false; 
+                } else {
+                    write!(write, " ").unwrap();
+                }
+                f(write, val);
+            }
+            write!(write, ")").unwrap();
+        } else {
+            write!(write, "#?#").unwrap();
+        }
+    }
+    let mut s = String::new();
+    f(&mut s, val);
+    s
 }
 
 fn main() {
@@ -154,8 +183,8 @@ fn main() {
             f(env, &vec[0])
         }))));
     let read = reader.borrow_mut().parse("
-        (quasiquote (1 (unquote '2) (unquote-splicing (vec '3 '4)))) ; `(1 ,2 ,@(vec 3 4)) => (append (vec (quote 1) 2) (vec 3 4))
+        (quasiquote (1 (unquote '2) (unquote-splicing (vec '3 (quasiquote 4))))) ; `(1 ,2 ,@(vec 3 4)) => (append (vec (quote 1) 2) (vec 3 4))
     ").unwrap();
     let macro_expanded = macro_expand(&mut env, read);
-    println!("{:?}", eval(env.clone(), macro_expanded).borrow().downcast_ref::<Vec<Val>>());
+    println!("{}", fmt(&eval(env.clone(), macro_expanded)));
 }
