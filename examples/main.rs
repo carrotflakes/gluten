@@ -187,4 +187,9 @@ fn main() {
     ").unwrap();
     let macro_expanded = macro_expand(&mut env, read);
     println!("{}", fmt(&eval(env.clone(), macro_expanded)));
+    let read = reader.borrow_mut().parse("
+        `(1 ,'2 ,@(vec '3 `4))
+    ").unwrap();
+    let macro_expanded = macro_expand(&mut env, read);
+    println!("{}", fmt(&eval(env.clone(), macro_expanded)));
 }

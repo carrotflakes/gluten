@@ -80,6 +80,22 @@ impl Reader {
                 let quote = r(Symbol(self.string_pool.intern("quote")));
                 Ok((r(vec![quote, val]), ncs))
             },
+            Some('`') => {
+                let (val, ncs) = self.parse_value(cs)?;
+                let quote = r(Symbol(self.string_pool.intern("quasiquote")));
+                Ok((r(vec![quote, val]), ncs))
+            },
+            Some(',') => {
+                let op = if cs.peek() == Some(&'@') {
+                    cs.next();
+                    "unquote-splicing"
+                } else {
+                    "unquote"
+                };
+                let op = r(Symbol(self.string_pool.intern(op))); 
+                let (val, ncs) = self.parse_value(cs)?;
+                Ok((r(vec![op, val]), ncs))
+            },
             Some('"') => {
                 let mut vec = Vec::new();
                 loop {
