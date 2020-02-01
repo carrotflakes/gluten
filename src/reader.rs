@@ -153,6 +153,10 @@ impl Reader {
     pub fn intern(&mut self, s: &str) -> Symbol {
         Symbol(self.string_pool.intern(s))
     }
+
+    pub fn try_intern(&self, s: &str) -> Option<Symbol> {
+        self.string_pool.try_intern(s).map(|s| Symbol(s))
+    }
 }
 
 impl Default for Reader {

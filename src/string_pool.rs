@@ -19,4 +19,9 @@ impl StringPool {
             v
         }
     }
+
+    pub fn try_intern(&self, str: &str) -> Option<InternedString> {
+        let v = Rc::new(str.to_string());
+        self.0.get_key_value(&v).map(|(v, _)| v.clone())
+    }
 }
