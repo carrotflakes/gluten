@@ -147,4 +147,22 @@ fn main() {
         (quasiquote (1 (unquote '2) (unquote-splicing (vec '3 (quasiquote 4)))))
     ");
     gltn.rep("`(1 ,'2 ,@(vec '3 `4))");
+
+    gltn.insert("or", r(Macro(Box::new(|env: &mut Env, vec: Vec<Val>| {
+        let let_sym = r(env.reader().borrow_mut().intern("let"));
+        let if_sym = r(env.reader().borrow_mut().intern("if"));
+        let mut ret = vec.last().unwrap().clone();
+        let mut i = 0;
+        for val in vec.iter().rev().skip(1) {
+            i += 1;
+            let sym = r(env.reader().borrow_mut().intern(&format!("#gensym{}#", i)));
+            ret = r(vec![
+                let_sym.clone(),
+                r(vec![r(vec![sym.clone(), val.clone()])]),
+                r(vec![if_sym.clone(), sym.clone(), sym.clone(), ret])
+            ]);
+        }
+        ret
+    }))));
+    gltn.rep("(or (or false false) 'hello 'goodbye)");
 }
