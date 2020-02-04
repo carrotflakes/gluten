@@ -2,6 +2,7 @@ pub mod string_pool;
 pub mod data;
 pub mod reader;
 pub mod core;
+pub mod quasiquote;
 #[macro_use]
 pub mod macros;
 
