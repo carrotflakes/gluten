@@ -1,9 +1,10 @@
 use crate::{
     data::*,
-    core::Env
+    core::Env,
+    error::GlutenError
 };
 
-pub fn quasiquote(env: &mut Env, vec: Vec<Val>) -> Val {
+pub fn quasiquote(env: &mut Env, vec: Vec<Val>) -> Result<Val, GlutenError> {
     fn f(env: &mut Env, val: &Val) -> Val {
         enum Q {
             V(Val),
@@ -53,5 +54,5 @@ pub fn quasiquote(env: &mut Env, vec: Vec<Val>) -> Val {
             r(vec![r(env.reader().borrow_mut().intern("quote")), val.clone()])
         }
     }
-    f(env, &vec[0])
+    Ok(f(env, &vec[0]))
 }

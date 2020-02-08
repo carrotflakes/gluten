@@ -1,7 +1,7 @@
 use std::rc::Rc;
 use std::cell::RefCell;
 use crate::data::*;
-use crate::error::GlutenError;
+use crate::error::{GlutenError, NativeFn};
 use crate::reader::Reader;
 
 use std::collections::HashMap;
@@ -135,6 +135,9 @@ pub fn eval(env: Env, val: Val) -> Result<Val, GlutenError> {
         let r = if let Some(ref f) = first.borrow().downcast_ref::<MyFn>() {
             let args = vec.iter().skip(1).map(|val| eval(env.clone(), val.clone())).collect::<Result<Vec<Val>, GlutenError>>()?;
             f(args)
+        } else if let Some(ref f) = first.borrow().downcast_ref::<NativeFn>() {
+            let args = vec.iter().skip(1).map(|val| eval(env.clone(), val.clone())).collect::<Result<Vec<Val>, GlutenError>>()?;
+            return f(args);
         } else {
             return Err(GlutenError::NotFunction(vec[0].clone()));
         };
@@ -144,38 +147,38 @@ pub fn eval(env: Env, val: Val) -> Result<Val, GlutenError> {
     }
 }
 
-pub struct Macro(pub Box<dyn Fn(&mut Env, Vec<Val>) -> Val>);
+pub struct Macro(pub Box<dyn Fn(&mut Env, Vec<Val>) -> Result<Val, GlutenError>>);
 
-pub fn macro_expand(env: &mut Env, val: Val) -> Val {
+pub fn macro_expand(env: &mut Env, val: Val) -> Result<Val, GlutenError> {
     if let Some(ref vec) = val.borrow().downcast_ref::<Vec<Val>>() {
-        let expaned_first = macro_expand(env, vec[0].clone());
+        let expaned_first = macro_expand(env, vec[0].clone())?;
         if let Some(ref s) = expaned_first.borrow().downcast_ref::<Symbol>() {
             if let Some(val) = env.get(s) {
                 if let Some(ref mac) = val.borrow().downcast_ref::<Macro>() {
-                    let args = vec.iter().skip(1).map(|v| v.clone()).collect();
-                    let expanded = (mac.0)(env, args);
+                    let args = vec.iter().skip(1).cloned().collect();
+                    let expanded = (mac.0)(env, args)?;
                     return macro_expand(env, expanded);
                 }
             }
         }
-        let args = vec.iter().skip(1).map(|v| macro_expand(env, v.clone()));
-        return r(vec![expaned_first].into_iter().chain(args).collect::<Vec<Val>>());
+        let args = vec.iter().skip(1).map(|v| macro_expand(env, v.clone())).collect::<Result<Vec<Val>, GlutenError>>()?;
+        return Ok(r(vec![expaned_first].into_iter().chain(args).collect::<Vec<Val>>()));
     }
-    val
+    Ok(val)
 }
 
-pub fn defmacro(env: &mut Env, vec: Vec<Val>) -> Val {
+pub fn defmacro(env: &mut Env, vec: Vec<Val>) -> Result<Val, GlutenError> {
     let name = if let Some(name) = vec[0].borrow().downcast_ref::<Symbol>() {
         name.clone()
     } else {
-        panic!("macro name must be a symbol");
+        return Err(GlutenError::Str("macro name must be a symbol".to_string()));
     };
     let params = if let Some(params) = vec[1].borrow().downcast_ref::<Vec<Val>>() {
         params.clone()
     } else {
-        panic!("illegal macro params");
+        return Err(GlutenError::Str("illegal macro params".to_string()));
     };
-    let body: Vec<Val> = vec.iter().skip(2).map(|val| val.clone()).collect();
+    let body: Vec<Val> = vec.iter().skip(2).cloned().collect();
     let mac = r(Macro(Box::new(move |env: &mut Env, args: Vec<Val>| {
         let mut env = env.child();
         for (rs, val) in params.iter().zip(args.iter()) {
@@ -183,10 +186,10 @@ pub fn defmacro(env: &mut Env, vec: Vec<Val>) -> Val {
                 env.insert(s.clone(), val.clone());
                 continue;
             }
-            panic!("illegal macro");
+            return Err(GlutenError::Str("illegal macro".to_string()));
         }
-        eval_iter(env, &mut body.iter()).unwrap()
+        eval_iter(env, &mut body.iter())
     })));
     env.insert(name, mac.clone());
-    mac
+    Ok(mac)
 }

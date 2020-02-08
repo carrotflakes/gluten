@@ -59,7 +59,7 @@ impl Gltn {
         println!("> {}", str);
         let forms = self.0.reader().borrow_mut().parse_top_level(str).unwrap();
         for form in forms {
-            let form = macro_expand(&mut self.0, form);
+            let form = macro_expand(&mut self.0, form).unwrap();
             let form = eval(self.0.clone(), form).unwrap();
             write_val(&mut std::io::stdout().lock(), &form);
             println!("");
@@ -135,7 +135,7 @@ fn main() {
 
     let hello_macro = gltn.0.reader().borrow_mut().parse("(quote hello_macro)").unwrap();
     gltn.insert("hello_macro", r(Macro(Box::new(move |_: &mut Env, _vec: Vec<Val>| {
-        hello_macro.clone()
+        Ok(hello_macro.clone())
     }))));
     gltn.rep("(hello_macro)");
 
@@ -162,7 +162,7 @@ fn main() {
                 r(vec![if_sym.clone(), sym.clone(), sym.clone(), ret])
             ]);
         }
-        ret
+        Ok(ret)
     }))));
     gltn.rep("(or (or false false) 'hello 'goodbye)");
 }
