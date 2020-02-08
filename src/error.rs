@@ -6,6 +6,7 @@ use std::fmt;
 pub enum GlutenError {
     Unbound(Symbol),
     NotFunction(Val),
+    ReadFailed(String),
     Str(String)
 }
 

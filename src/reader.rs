@@ -2,8 +2,9 @@ use std::str::Chars;
 use std::iter::Peekable;
 use crate::data::*;
 use crate::string_pool::StringPool;
+use crate::error::GlutenError;
 
-pub type AtomReader = Box<dyn FnMut(&mut StringPool, &str) -> Result<Val, String>>;
+pub type AtomReader = Box<dyn FnMut(&mut StringPool, &str) -> Result<Val, GlutenError>>;
 
 pub struct Reader {
     atom_reader: AtomReader,
@@ -18,19 +19,19 @@ impl Reader {
         }
     }
 
-    pub fn parse(&mut self, src: &str) -> Result<Val, String> {
+    pub fn parse(&mut self, src: &str) -> Result<Val, GlutenError> {
         self.parse_value(src.chars().peekable())
             .and_then(|mut x| {
                 skip_whitespace(&mut x.1);
                 if x.1.count() == 0 {
                     Ok(x.0)
                 } else {
-                    Err("expect EOS, but found some character".to_string())
+                    Err(GlutenError::ReadFailed("expect EOS, but found some character".to_string()))
                 }
             })
     }
 
-    pub fn parse_top_level(&mut self, src: &str) -> Result<Vec<Val>, String> {
+    pub fn parse_top_level(&mut self, src: &str) -> Result<Vec<Val>, GlutenError> {
         let mut vec = Vec::new();
         let mut cs = src.chars().peekable();
         loop {
@@ -43,14 +44,14 @@ impl Reader {
                         return Ok(vec);
                     }
                 },
-                Err(s) => {
-                    return Err(s);
+                Err(err) => {
+                    return Err(err);
                 }
             }
         }
     }
-    
-    fn parse_value<'a>(&mut self, mut cs: Peekable<Chars<'a>>) -> Result<(Val, Peekable<Chars<'a>>), String> {
+
+    fn parse_value<'a>(&mut self, mut cs: Peekable<Chars<'a>>) -> Result<(Val, Peekable<Chars<'a>>), GlutenError> {
         skip_whitespace(&mut cs);
         match cs.next() {
             Some('(') => {
@@ -71,7 +72,7 @@ impl Reader {
                     if c == ')' {
                         break;
                     }
-                    return Err("closing parenthesis missing".to_string());
+                    return Err(GlutenError::ReadFailed("closing parenthesis missing".to_string()));
                 }
                 Ok((r(vec), cs))
             },
@@ -92,7 +93,7 @@ impl Reader {
                 } else {
                     "unquote"
                 };
-                let op = r(Symbol(self.string_pool.intern(op))); 
+                let op = r(Symbol(self.string_pool.intern(op)));
                 let (val, ncs) = self.parse_value(cs)?;
                 Ok((r(vec![op, val]), ncs))
             },
@@ -114,7 +115,7 @@ impl Reader {
                                     });
                                 },
                                 None => {
-                                    return Err("expect a charactor but found EOS".to_string());
+                                    return Err(GlutenError::ReadFailed("expect a charactor but found EOS".to_string()));
                                 }
                             }
                         },
@@ -122,7 +123,7 @@ impl Reader {
                             vec.push(c);
                         },
                         None => {
-                            return Err("closing doublequote".to_string());
+                            return Err(GlutenError::ReadFailed("closing doublequote".to_string()));
                         }
                     }
                 }
@@ -145,8 +146,8 @@ impl Reader {
                 let s: String = vec.iter().collect();
                 (self.atom_reader)(&mut self.string_pool, &s).map(|val| (val, cs))
             },
-            Some(c) => Err(format!("unexpected character: {:?}", c)),
-            None => Err("unexpected EOS".to_string())
+            Some(c) => Err(GlutenError::ReadFailed(format!("unexpected character: {:?}", c))),
+            None => Err(GlutenError::ReadFailed("unexpected EOS".to_string()))
         }
     }
 
@@ -183,6 +184,6 @@ fn skip_whitespace<'a> (cs: &mut Peekable<Chars<'a>>) {
     }
 }
 
-pub fn default_atom_reader(sp: &mut StringPool, s: &str) -> Result<Val, String> {
+pub fn default_atom_reader(sp: &mut StringPool, s: &str) -> Result<Val, GlutenError> {
     Ok(r(Symbol(sp.intern(s))))
 }
