@@ -30,7 +30,7 @@ fn write_val<T: Write>(write: &mut T, val: &Val) {
         let mut first = true;
         for val in vec {
             if first {
-                first = false; 
+                first = false;
             } else {
                 write!(write, " ").unwrap();
             }
@@ -60,7 +60,7 @@ impl Gltn {
         let forms = self.0.reader().borrow_mut().parse_top_level(str).unwrap();
         for form in forms {
             let form = macro_expand(&mut self.0, form);
-            let form = eval(self.0.clone(), form);
+            let form = eval(self.0.clone(), form).unwrap();
             write_val(&mut std::io::stdout().lock(), &form);
             println!("");
         }

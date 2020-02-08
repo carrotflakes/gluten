@@ -1,5 +1,6 @@
 pub mod string_pool;
 pub mod data;
+pub mod error;
 pub mod reader;
 pub mod core;
 pub mod quasiquote;
