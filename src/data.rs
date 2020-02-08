@@ -28,3 +28,5 @@ impl Hash for Symbol {
         (&*self.0 as *const String).hash(state);
     }
 }
+
+pub use crate::error::NativeFn;

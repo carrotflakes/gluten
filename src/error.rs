@@ -25,5 +25,4 @@ impl Error for GlutenError {
     }
 }
 
-// TODO: move to appropriate place!
 pub type NativeFn = Box<dyn Fn(Vec<Val>) -> Result<Val, GlutenError>>;

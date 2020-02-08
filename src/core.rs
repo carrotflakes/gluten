@@ -1,7 +1,7 @@
 use std::rc::Rc;
 use std::cell::RefCell;
 use crate::data::*;
-use crate::error::{GlutenError, NativeFn};
+use crate::error::GlutenError;
 use crate::reader::Reader;
 
 use std::collections::HashMap;
