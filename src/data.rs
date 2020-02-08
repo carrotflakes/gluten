@@ -29,4 +29,4 @@ impl Hash for Symbol {
     }
 }
 
-pub use crate::error::NativeFn;
+pub type NativeFn = Box<dyn Fn(Vec<Val>) -> Result<Val, crate::error::GlutenError>>;

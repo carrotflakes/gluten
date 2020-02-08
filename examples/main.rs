@@ -4,6 +4,7 @@ extern crate gluten;
 use std::io::Write;
 use gluten::{
     data::*,
+    error::GlutenError,
     reader::Reader,
     core::{eval, Env, Macro, macro_expand, defmacro},
     quasiquote::quasiquote
@@ -57,13 +58,16 @@ impl Gltn {
 
     fn rep(&mut self, str: &str) {
         println!("> {}", str);
-        let forms = self.0.reader().borrow_mut().parse_top_level(str).unwrap();
-        for form in forms {
-            let form = macro_expand(&mut self.0, form).unwrap();
-            let form = eval(self.0.clone(), form).unwrap();
-            write_val(&mut std::io::stdout().lock(), &form);
-            println!("");
-        }
+        (|| {
+            let forms = self.0.reader().borrow_mut().parse_top_level(str)?;
+            for form in forms {
+                let form = macro_expand(&mut self.0, form)?;
+                let form = eval(self.0.clone(), form)?;
+                write_val(&mut std::io::stdout().lock(), &form);
+                println!("");
+            }
+            Ok(())
+        })().unwrap_or_else(|e: GlutenError| println!("{}", e));
     }
 }
 
@@ -165,4 +169,6 @@ fn main() {
         Ok(ret)
     }))));
     gltn.rep("(or (or false false) 'hello 'goodbye)");
+    gltn.rep("hogehoge");
+    gltn.rep("(false)");
 }

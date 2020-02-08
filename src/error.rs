@@ -12,18 +12,14 @@ pub enum GlutenError {
 
 impl fmt::Display for GlutenError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?}", self)
+        use GlutenError::*;
+        match self {
+            Unbound(sym) => write!(f, "Unbound Symbol: {}", sym.0),
+            NotFunction(val) => write!(f, "Not a function: {:?}", val),
+            ReadFailed(str) => write!(f, "Read failed: {}", str),
+            Str(str) => f.write_str(&str),
+        }
     }
 }
 
-impl Error for GlutenError {
-    fn description(&self) -> &str {
-        "てへぺろ"
-    }
-
-    fn cause(&self) -> Option<&dyn Error> {
-        None
-    }
-}
-
-pub type NativeFn = Box<dyn Fn(Vec<Val>) -> Result<Val, GlutenError>>;
+impl Error for GlutenError {}
