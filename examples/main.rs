@@ -171,4 +171,5 @@ fn main() {
     gltn.rep("(or (or false false) 'hello 'goodbye)");
     gltn.rep("hogehoge");
     gltn.rep("(false)");
+    gltn.rep("(quote 1");
 }

@@ -68,10 +68,8 @@ impl Reader {
                     }
                 }
                 skip_whitespace(&mut cs);
-                while let Some(c) = cs.next() {
-                    if c == ')' {
-                        break;
-                    }
+                if let Some(')') = cs.next() {
+		} else {
                     return Err(GlutenError::ReadFailed("closing parenthesis missing".to_string()));
                 }
                 Ok((r(vec), cs))
