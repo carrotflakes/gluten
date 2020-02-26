@@ -6,6 +6,7 @@ pub mod core;
 pub mod quasiquote;
 #[macro_use]
 pub mod macros;
+pub mod val_helper;
 
 pub use crate::string_pool::{StringPool, InternedString};
 pub use crate::data::*;
