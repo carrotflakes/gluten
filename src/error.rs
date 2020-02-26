@@ -7,7 +7,8 @@ pub enum GlutenError {
     Unbound(Symbol),
     NotFunction(Val),
     ReadFailed(String),
-    Str(String)
+    Str(String),
+    Stacked(String, Box<GlutenError>)
 }
 
 impl fmt::Display for GlutenError {
@@ -18,8 +19,17 @@ impl fmt::Display for GlutenError {
             NotFunction(val) => write!(f, "Not a function: {:?}", val),
             ReadFailed(str) => write!(f, "Read failed: {}", str),
             Str(str) => f.write_str(&str),
+            Stacked(str, inner) => write!(f, "{}\nin {}", inner, str)
         }
     }
 }
 
-impl Error for GlutenError {}
+impl Error for GlutenError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        use GlutenError::*;
+        match self {
+            Stacked(_, inner) => Some(inner),
+            _ => None
+        }
+    }
+}

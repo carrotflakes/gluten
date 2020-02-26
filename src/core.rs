@@ -115,8 +115,8 @@ pub fn eval(env: Env, val: Val) -> Result<Val, GlutenError> {
                             }
                             panic!("illegal lambda");
                         }
-                        eval_iter(env, &mut body.iter()).unwrap()
-                    }) as MyFn));
+                        eval_iter(env, &mut body.iter())
+                    }) as NativeFn));
                 }
                 "set" => {
                     if vec.len() == 3 {
@@ -137,7 +137,7 @@ pub fn eval(env: Env, val: Val) -> Result<Val, GlutenError> {
             f(args)
         } else if let Some(ref f) = first.borrow().downcast_ref::<NativeFn>() {
             let args = vec.iter().skip(1).map(|val| eval(env.clone(), val.clone())).collect::<Result<Vec<Val>, GlutenError>>()?;
-            return f(args);
+            return f(args).map_err(|err| GlutenError::Stacked(vec[0].borrow().downcast_ref::<Symbol>().map(|s| format!("{}", s.0)).unwrap_or_else(|| "#UNKNOWN".to_owned()), Box::new(err)));
         } else {
             return Err(GlutenError::NotFunction(vec[0].clone()));
         };

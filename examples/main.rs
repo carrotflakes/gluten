@@ -178,5 +178,5 @@ fn main() {
     gltn.rep("hogehoge");
     gltn.rep("(false)");
     gltn.rep("(quote 1");
-    gltn.rep("(vec-len '123)");
+    gltn.rep("(let ((f (lambda (x) (vec-len x)))) (f '123))");
 }
