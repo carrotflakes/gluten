@@ -76,39 +76,45 @@ fn main() {
     gltn.insert("true", r(true));
     gltn.insert("false", r(false));
     gltn.insert("a", r(Box::new(|vec: Vec<Val>| {
-        vec.first().unwrap().clone()
-    }) as MyFn));
+        vec.first().cloned().ok_or_else(|| GlutenError::Str("no argument given".to_owned()))
+    }) as NativeFn));
     gltn.insert("add", fun!(add(i32, i32)));
     gltn.insert("parse_int", fun!(parse_int(&String)));
     gltn.insert("vec", r(Box::new(|vec: Vec<Val>| {
-        r(vec)
-    }) as MyFn));
+        Ok(r(vec))
+    }) as NativeFn));
     gltn.insert("append", r(Box::new(|vec: Vec<Val>| {
         let mut ret = vec![];
         for v in vec.into_iter() {
             if let Some(ref v) = v.borrow().downcast_ref::<Vec<Val>>() {
                 ret.extend_from_slice(v);
             } else {
-                panic!();
+                return Err(GlutenError::Str("argument type mismatch".to_owned()));
             }
         }
-        r(ret)
-    }) as MyFn));
+        Ok(r(ret))
+    }) as NativeFn));
     gltn.insert("eq", r(Box::new(|vec: Vec<Val>| {
-        r(std::rc::Rc::ptr_eq(&vec[0], &vec[1]))
-    }) as MyFn));
+        if vec.len() == 2 {
+            Ok(r(std::rc::Rc::ptr_eq(&vec[0], &vec[1])))
+        } else {
+            Err(GlutenError::Str(format!("eq takes 2 arguments, but given {}", vec.len())))
+        }
+    }) as NativeFn));
     gltn.insert("symbol?", r(Box::new(|vec: Vec<Val>| {
-        r(vec[0].borrow().is::<Symbol>())
-    }) as MyFn));
+        Ok(r(vec.get(0).ok_or_else(|| GlutenError::Str(format!("symbol? take 1 argument")))?.borrow().is::<Symbol>()))
+    }) as NativeFn));
     gltn.insert("vec?", r(Box::new(|vec: Vec<Val>| {
-        r(vec[0].borrow().is::<Vec<Val>>())
-    }) as MyFn));
+        Ok(r(vec.get(0).ok_or_else(|| GlutenError::Str(format!("vec? take 1 argument")))?.borrow().is::<Vec<Val>>()))
+    }) as NativeFn));
     gltn.insert("vec-len", r(Box::new(|vec: Vec<Val>| {
-        r(vec[0].borrow().downcast_ref::<Vec<Val>>().unwrap().len() as i32)
-    }) as MyFn));
+        let first = vec.get(0).ok_or_else(|| GlutenError::Str(format!("vec-len take 1 argument")))?;
+        Ok(r(first.borrow().downcast_ref::<Vec<Val>>().ok_or_else(|| GlutenError::Str(format!("vec-len 1st argument type is Vec<Val>")))?.len() as i32))
+    }) as NativeFn));
     gltn.insert("vec-get", r(Box::new(|vec: Vec<Val>| {
-        r(vec[0].borrow().downcast_ref::<Vec<Val>>().unwrap()[*vec[1].borrow().downcast_ref::<i32>().unwrap() as usize].clone())
-    }) as MyFn));
+        let first = vec.get(0).ok_or_else(|| GlutenError::Str(format!("vec-get take 1 argument")))?;
+        Ok(r(first.borrow().downcast_ref::<Vec<Val>>().ok_or_else(|| GlutenError::Str(format!("vec-get 1st argument type is Vec<Val>")))?[*vec[1].borrow().downcast_ref::<i32>().unwrap() as usize].clone()))
+    }) as NativeFn));
 
     gltn.rep("(quote a)");
     gltn.rep("\"こんにちは! さようなら\\n改行です\"");
@@ -172,4 +178,5 @@ fn main() {
     gltn.rep("hogehoge");
     gltn.rep("(false)");
     gltn.rep("(quote 1");
+    gltn.rep("(vec-len '123)");
 }
