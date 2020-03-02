@@ -1,19 +1,23 @@
 use std::str::Chars;
 use std::iter::Peekable;
+use std::collections::HashMap;
 use crate::data::*;
 use crate::string_pool::StringPool;
 use crate::error::GlutenError;
 
 pub type AtomReader = Box<dyn FnMut(&mut StringPool, &str) -> Result<Val, GlutenError>>;
+pub type ReadTable = HashMap<char, &'static dyn for<'a> Fn(&mut Reader, Peekable<Chars<'a>>) -> Result<(Val, Peekable<Chars<'a>>), GlutenError>>;
 
 pub struct Reader {
-    atom_reader: AtomReader,
+    pub read_table: ReadTable,
+    pub atom_reader: AtomReader,
     string_pool: StringPool
 }
 
 impl Reader {
     pub fn new(atom_reader: AtomReader) -> Self {
         Reader {
+            read_table: make_default_read_table(),
             atom_reader,
             string_pool: StringPool::new()
         }
@@ -53,82 +57,10 @@ impl Reader {
 
     fn parse_value<'a>(&mut self, mut cs: Peekable<Chars<'a>>) -> Result<(Val, Peekable<Chars<'a>>), GlutenError> {
         skip_whitespace(&mut cs);
-        match cs.next() {
-            Some('(') => {
-                let mut vec = vec![];
-                loop {
-                    match self.parse_value(cs.clone()) {
-                        Ok((val, ncs)) => {
-                            vec.push(val);
-                            cs = ncs;
-                        },
-                        _ => {
-                            break;
-                        }
-                    }
-                }
-                skip_whitespace(&mut cs);
-                if let Some(')') = cs.next() {
-		} else {
-                    return Err(GlutenError::ReadFailed("closing parenthesis missing".to_string()));
-                }
-                Ok((r(vec), cs))
-            },
-            Some('\'') => {
-                let (val, ncs) = self.parse_value(cs)?;
-                let quote = r(Symbol(self.string_pool.intern("quote")));
-                Ok((r(vec![quote, val]), ncs))
-            },
-            Some('`') => {
-                let (val, ncs) = self.parse_value(cs)?;
-                let quote = r(Symbol(self.string_pool.intern("quasiquote")));
-                Ok((r(vec![quote, val]), ncs))
-            },
-            Some(',') => {
-                let op = if cs.peek() == Some(&'@') {
-                    cs.next();
-                    "unquote-splicing"
-                } else {
-                    "unquote"
-                };
-                let op = r(Symbol(self.string_pool.intern(op)));
-                let (val, ncs) = self.parse_value(cs)?;
-                Ok((r(vec![op, val]), ncs))
-            },
-            Some('"') => {
-                let mut vec = Vec::new();
-                loop {
-                    match cs.next() {
-                        Some(c) if c == '"' => {
-                            break;
-                        },
-                        Some(c) if c == '\\' => {
-                            match cs.next() {
-                                Some(c) => {
-                                    vec.push(match c {
-                                        'n' => '\n',
-                                        'r' => '\r',
-                                        't' => '\t',
-                                        _ => c
-                                    });
-                                },
-                                None => {
-                                    return Err(GlutenError::ReadFailed("expect a charactor but found EOS".to_string()));
-                                }
-                            }
-                        },
-                        Some(c) => {
-                            vec.push(c);
-                        },
-                        None => {
-                            return Err(GlutenError::ReadFailed("closing doublequote".to_string()));
-                        }
-                    }
-                }
-                let s: String = vec.iter().collect();
-                Ok((r(s), cs))
-            },
-            Some(c) if !c.is_whitespace() && !['(', ')', '\'', '"', ';'].contains(&c) => {
+        if let Some(c) = cs.next() {
+            if let Some(f) = self.read_table.get(&c).cloned() {
+                f(self, cs)
+            } else if !c.is_whitespace() && !['(', ')', '\'', '"', ';'].contains(&c) {
                 let mut vec = vec![c];
                 loop {
                     match cs.peek() {
@@ -143,9 +75,11 @@ impl Reader {
                 }
                 let s: String = vec.iter().collect();
                 (self.atom_reader)(&mut self.string_pool, &s).map(|val| (val, cs))
-            },
-            Some(c) => Err(GlutenError::ReadFailed(format!("unexpected character: {:?}", c))),
-            None => Err(GlutenError::ReadFailed("unexpected EOS".to_string()))
+            } else {
+                Err(GlutenError::ReadFailed(format!("unexpected character: {:?}", c)))
+            }
+        } else {
+            Err(GlutenError::ReadFailed("unexpected EOS".to_string()))
         }
     }
 
@@ -184,4 +118,91 @@ fn skip_whitespace<'a> (cs: &mut Peekable<Chars<'a>>) {
 
 pub fn default_atom_reader(sp: &mut StringPool, s: &str) -> Result<Val, GlutenError> {
     Ok(r(Symbol(sp.intern(s))))
+}
+
+pub fn read_list<'a>(reader: &mut Reader, mut cs: Peekable<Chars<'a>>) -> Result<(Val, Peekable<Chars<'a>>), GlutenError> {
+    let mut vec = vec![];
+    loop {
+        match reader.parse_value(cs.clone()) {
+            Ok((val, ncs)) => {
+                vec.push(val);
+                cs = ncs;
+            },
+            _ => {
+                break;
+            }
+        }
+    }
+    skip_whitespace(&mut cs);
+    if cs.next() == None {
+        return Err(GlutenError::ReadFailed("closing parenthesis missing".to_string()));
+    }
+    Ok((r(vec), cs))
+}
+
+pub fn read_quote<'a>(reader: &mut Reader, cs: Peekable<Chars<'a>>) -> Result<(Val, Peekable<Chars<'a>>), GlutenError> {
+    let (val, ncs) = reader.parse_value(cs)?;
+    let quote = r(Symbol(reader.string_pool.intern("quote")));
+    Ok((r(vec![quote, val]), ncs))
+}
+
+pub fn read_backquote<'a>(reader: &mut Reader, cs: Peekable<Chars<'a>>) -> Result<(Val, Peekable<Chars<'a>>), GlutenError> {
+    let (val, ncs) = reader.parse_value(cs)?;
+    let quote = r(Symbol(reader.string_pool.intern("quasiquote")));
+    Ok((r(vec![quote, val]), ncs))
+}
+pub fn read_comma<'a>(reader: &mut Reader, mut cs: Peekable<Chars<'a>>) -> Result<(Val, Peekable<Chars<'a>>), GlutenError> {
+    let op = if cs.peek() == Some(&'@') {
+        cs.next();
+        "unquote-splicing"
+    } else {
+        "unquote"
+    };
+    let op = r(Symbol(reader.string_pool.intern(op)));
+    let (val, ncs) = reader.parse_value(cs)?;
+    Ok((r(vec![op, val]), ncs))
+}
+
+pub fn read_string<'a>(_reader: &mut Reader, mut cs: Peekable<Chars<'a>>) -> Result<(Val, Peekable<Chars<'a>>), GlutenError> {
+    let mut vec = Vec::new();
+    loop {
+        match cs.next() {
+            Some(c) if c == '"' => {
+                break;
+            },
+            Some(c) if c == '\\' => {
+                match cs.next() {
+                    Some(c) => {
+                        vec.push(match c {
+                            'n' => '\n',
+                            'r' => '\r',
+                            't' => '\t',
+                            _ => c
+                        });
+                    },
+                    None => {
+                        return Err(GlutenError::ReadFailed("expect a charactor but found EOS".to_string()));
+                    }
+                }
+            },
+            Some(c) => {
+                vec.push(c);
+            },
+            None => {
+                return Err(GlutenError::ReadFailed("closing doublequote".to_string()));
+            }
+        }
+    }
+    let s: String = vec.iter().collect();
+    Ok((r(s), cs))
+}
+
+pub fn make_default_read_table() -> ReadTable {
+    let mut rt = ReadTable::new();
+    rt.insert('(', &read_list);
+    rt.insert('\'', &read_quote);
+    rt.insert('`', &read_backquote);
+    rt.insert(',', &read_comma);
+    rt.insert('"', &read_string);
+    rt
 }
