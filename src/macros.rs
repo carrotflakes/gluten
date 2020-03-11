@@ -4,12 +4,12 @@ macro_rules! fun_ {
         return r($call);
     };
     ($fn:ident ($($args:expr,)*), $it:ident, (&$t:ty $(, $ts:ty)*)) => {
-        if let Some(v) = $it.next().unwrap().borrow_mut().downcast_mut::<$t>() {
+        if let Some(v) = $it.next().unwrap().downcast_ref::<$t>() {
             fun_!($fn ($($args,)* v,), $it, ($($ts),*))
         }
     };
     ($fn:ident ($($args:expr,)*), $it:ident, ($t:ty $(, $ts:ty)*)) => {
-        if let Some(v) = $it.next().unwrap().borrow().downcast_ref::<$t>() {
+        if let Some(v) = $it.next().unwrap().downcast_ref::<$t>() {
             fun_!($fn ($($args,)* *v,), $it, ($($ts),*))
         }
     };

@@ -19,7 +19,6 @@ fn add(a: i32, b: i32) -> i32 {
 }
 
 fn write_val<T: Write>(write: &mut T, val: &Val) {
-    let val = val.borrow();
     if let Some(s) = val.downcast_ref::<Symbol>() {
         write!(write, "{}", s.0.as_ref()).unwrap();
     } else if let Some(s) = val.downcast_ref::<String>() {
@@ -86,7 +85,7 @@ fn main() {
     gltn.insert("append", r(Box::new(|vec: Vec<Val>| {
         let mut ret = vec![];
         for v in vec.into_iter() {
-            if let Some(ref v) = v.borrow().downcast_ref::<Vec<Val>>() {
+            if let Some(ref v) = v.downcast_ref::<Vec<Val>>() {
                 ret.extend_from_slice(v);
             } else {
                 return Err(GlutenError::Str("argument type mismatch".to_owned()));
@@ -102,18 +101,18 @@ fn main() {
         }
     }) as NativeFn));
     gltn.insert("symbol?", r(Box::new(|vec: Vec<Val>| {
-        Ok(r(vec.get(0).ok_or_else(|| GlutenError::Str(format!("symbol? take 1 argument")))?.borrow().is::<Symbol>()))
+        Ok(r(vec.get(0).ok_or_else(|| GlutenError::Str(format!("symbol? take 1 argument")))?.is::<Symbol>()))
     }) as NativeFn));
     gltn.insert("vec?", r(Box::new(|vec: Vec<Val>| {
-        Ok(r(vec.get(0).ok_or_else(|| GlutenError::Str(format!("vec? take 1 argument")))?.borrow().is::<Vec<Val>>()))
+        Ok(r(vec.get(0).ok_or_else(|| GlutenError::Str(format!("vec? take 1 argument")))?.is::<Vec<Val>>()))
     }) as NativeFn));
     gltn.insert("vec-len", r(Box::new(|vec: Vec<Val>| {
         let first = vec.get(0).ok_or_else(|| GlutenError::Str(format!("vec-len take 1 argument")))?;
-        Ok(r(first.borrow().downcast_ref::<Vec<Val>>().ok_or_else(|| GlutenError::Str(format!("vec-len 1st argument type is Vec<Val>")))?.len() as i32))
+        Ok(r(first.downcast_ref::<Vec<Val>>().ok_or_else(|| GlutenError::Str(format!("vec-len 1st argument type is Vec<Val>")))?.len() as i32))
     }) as NativeFn));
     gltn.insert("vec-get", r(Box::new(|vec: Vec<Val>| {
         let first = vec.get(0).ok_or_else(|| GlutenError::Str(format!("vec-get take 1 argument")))?;
-        Ok(r(first.borrow().downcast_ref::<Vec<Val>>().ok_or_else(|| GlutenError::Str(format!("vec-get 1st argument type is Vec<Val>")))?[*vec[1].borrow().downcast_ref::<i32>().unwrap() as usize].clone()))
+        Ok(r(first.downcast_ref::<Vec<Val>>().ok_or_else(|| GlutenError::Str(format!("vec-get 1st argument type is Vec<Val>")))?[*vec[1].downcast_ref::<i32>().unwrap() as usize].clone()))
     }) as NativeFn));
 
     gltn.rep("(quote a)");

@@ -15,7 +15,6 @@ fn parse_int(s: &String) -> i64 {
 }
 
 fn write_val<T: Write>(write: &mut T, val: &Val) {
-    let val = val.borrow();
     if let Some(s) = val.downcast_ref::<Symbol>() {
         write!(write, "{}", s.0.as_ref()).unwrap();
     } else if let Some(s) = val.downcast_ref::<String>() {
@@ -71,7 +70,7 @@ fn main() {
     gltn.insert("parse_int", fun!(parse_int(&String)));
     gltn.insert("print", r(Box::new(|vec: Vec<Val>| -> Val {
         fn f<T: std::fmt::Debug + 'static>(vec: &Vec<Val>) -> Option<Val> {
-            println!("{:?}", vec[0].borrow().downcast_ref::<T>()?);
+            println!("{:?}", vec[0].downcast_ref::<T>()?);
             Some(r(true))
         }
         f::<f64>(&vec).or_else(|| f::<i64>(&vec)).unwrap()
@@ -80,7 +79,7 @@ fn main() {
         fn f<T: std::ops::Add<Output = T> + Default + Copy + 'static>(vec: &Vec<Val>) -> Option<Val> {
             let mut acc = T::default();
             for rv in vec.iter() {
-                acc = acc + *rv.borrow().downcast_ref::<T>()?;
+                acc = acc + *rv.downcast_ref::<T>()?;
             }
             Some(r(acc))
         }
@@ -88,9 +87,9 @@ fn main() {
     }) as MyFn));
     gltn.insert("-", r(Box::new(|vec: Vec<Val>| -> Val {
         fn f<T: std::ops::Sub<Output = T> + Copy + 'static>(vec: &Vec<Val>) -> Option<Val> {
-            let mut acc = *vec[0].borrow().downcast_ref::<T>()?;
+            let mut acc = *vec[0].downcast_ref::<T>()?;
             for rv in vec.iter().skip(1) {
-                acc = acc - *rv.borrow().downcast_ref::<T>()?;
+                acc = acc - *rv.downcast_ref::<T>()?;
             }
             Some(r(acc))
         }
@@ -98,9 +97,9 @@ fn main() {
     }) as MyFn));
     gltn.insert("=", r(Box::new(|vec: Vec<Val>| -> Val {
         fn f<T: PartialEq + Copy + 'static>(vec: &Vec<Val>) -> Option<Val> {
-            let first = *vec[0].borrow().downcast_ref::<T>()?;
+            let first = *vec[0].downcast_ref::<T>()?;
             for rv in vec.iter() {
-                if first != *rv.borrow().downcast_ref::<T>()? {
+                if first != *rv.downcast_ref::<T>()? {
                     return Some(r(false));
                 }
             }
@@ -110,9 +109,9 @@ fn main() {
     }) as MyFn));
     gltn.insert("<", r(Box::new(|vec: Vec<Val>| -> Val {
         fn f<T: PartialEq + PartialOrd + Copy + 'static>(vec: &Vec<Val>) -> Option<Val> {
-            let mut left = *vec[0].borrow().downcast_ref::<T>()?;
+            let mut left = *vec[0].downcast_ref::<T>()?;
             for rv in vec.iter().skip(1) {
-                let right = *rv.borrow().downcast_ref::<T>()?;
+                let right = *rv.downcast_ref::<T>()?;
                 if left >= right {
                     return Some(r(false));
                 }
@@ -128,7 +127,7 @@ fn main() {
     gltn.insert("append", r(Box::new(|vec: Vec<Val>| {
         let mut ret = vec![];
         for v in vec.into_iter() {
-            if let Some(ref v) = v.borrow().downcast_ref::<Vec<Val>>() {
+            if let Some(ref v) = v.downcast_ref::<Vec<Val>>() {
                 ret.extend_from_slice(v);
             } else {
                 panic!();
@@ -140,16 +139,16 @@ fn main() {
         r(std::rc::Rc::ptr_eq(&vec[0], &vec[1]))
     }) as MyFn));
     gltn.insert("symbol?", r(Box::new(|vec: Vec<Val>| {
-        r(vec[0].borrow().is::<Symbol>())
+        r(vec[0].is::<Symbol>())
     }) as MyFn));
     gltn.insert("vec?", r(Box::new(|vec: Vec<Val>| {
-        r(vec[0].borrow().is::<Vec<Val>>())
+        r(vec[0].is::<Vec<Val>>())
     }) as MyFn));
     gltn.insert("vec_len", r(Box::new(|vec: Vec<Val>| {
-        r(vec[0].borrow().downcast_ref::<Vec<Val>>().unwrap().len() as i64)
+        r(vec[0].downcast_ref::<Vec<Val>>().unwrap().len() as i64)
     }) as MyFn));
     gltn.insert("vec_get", r(Box::new(|vec: Vec<Val>| {
-        r(vec[0].borrow().downcast_ref::<Vec<Val>>().unwrap()[*vec[1].borrow().downcast_ref::<i64>().unwrap() as usize].clone())
+        r(vec[0].downcast_ref::<Vec<Val>>().unwrap()[*vec[1].downcast_ref::<i64>().unwrap() as usize].clone())
     }) as MyFn));
     gltn.insert("defmacro", r(Macro(Box::new(defmacro))));
     gltn.insert("quasiquote", r(Macro(Box::new(quasiquote))));

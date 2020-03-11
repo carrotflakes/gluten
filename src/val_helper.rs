@@ -7,11 +7,11 @@ pub trait Get {
 
 impl Get for Val {
   fn clone_as<T: 'static + Clone>(&self) -> Option<T> {
-    self.borrow().downcast_ref::<T>().cloned()
+    self.downcast_ref::<T>().cloned()
   }
 
   fn copy_as<T: 'static + Copy>(&self) -> Option<T> {
-    self.borrow().downcast_ref::<T>().copied()
+    self.downcast_ref::<T>().copied()
   }
 }
 
