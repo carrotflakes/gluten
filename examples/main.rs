@@ -52,7 +52,7 @@ impl Gltn {
         let mut reader = Reader::default();
         {
             let mut read_table: gluten::reader::ReadTable = std::collections::HashMap::new();
-            read_table.insert('r', Rc::new(read_raw_string));
+            read_table.insert('#', Rc::new(read_raw_string));
             let r = move |reader: &mut Reader, cs: &mut Peekable<Chars>| {
                 if let Some(c) = cs.next() {
                    if let Some(f) = read_table.get(&c).cloned() {
@@ -217,7 +217,7 @@ fn main() {
     }))));
     gltn.rep("(or (or false false) 'hello 'goodbye)");
 
-    gltn.rep(r###"(vec 'a #r##"hoge"#fuga"##)"###);
+    gltn.rep(r###"(vec 'a ##"hoge"#fuga"##)"###);
 
     gltn.rep("hogehoge");
     gltn.rep("(false)");
@@ -226,7 +226,7 @@ fn main() {
 }
 
 fn read_raw_string(_reader: &mut Reader, cs: &mut Peekable<Chars>) -> Result<Val, GlutenError> {
-    let mut numbers = 0;
+    let mut numbers = 2;
     while let Some('#') = cs.peek() {
         cs.next();
         numbers += 1;
