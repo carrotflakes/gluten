@@ -2,6 +2,7 @@ pub mod string_pool;
 pub mod symbol;
 pub mod data;
 pub mod error;
+pub mod read_table;
 pub mod reader;
 pub mod core;
 pub mod quasiquote;
