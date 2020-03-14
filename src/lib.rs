@@ -4,6 +4,7 @@ pub mod data;
 pub mod error;
 pub mod read_table;
 pub mod reader;
+pub mod env;
 pub mod core;
 pub mod quasiquote;
 #[macro_use]
@@ -14,4 +15,5 @@ pub mod val_helper;
 pub use crate::string_pool::{StringPool, InternedString};
 pub use crate::data::*;
 pub use crate::reader::Reader;
-pub use crate::core::{eval, Env};
+pub use crate::env::Env;
+pub use crate::core::eval;

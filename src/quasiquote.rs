@@ -1,6 +1,6 @@
 use crate::{
     data::*,
-    core::Env,
+    env::Env,
     error::GlutenError
 };
 

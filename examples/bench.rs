@@ -5,7 +5,8 @@ use std::io::Write;
 use gluten::{
     data::*,
     reader::Reader,
-    core::{eval, Env, Macro, macro_expand, defmacro},
+    env::Env,
+    core::{eval, Macro, macro_expand, defmacro},
     quasiquote::quasiquote
 };
 use std::time::Instant;
@@ -181,7 +182,7 @@ fn main() {
             (if (< zero n)
                 (+ (fib (- n one)) (fib (- n two)))
                 one)))
-    (fib (parse_int "29"))
+    (fib (parse_int "30"))
     "#);
     println!("{:?} msec elapsed", start.elapsed().as_millis());
 }

@@ -1,5 +1,6 @@
 use crate::data::*;
-use crate::core::{Env, eval, eval_iter};
+use crate::env::Env;
+use crate::core::{eval, eval_iter};
 use crate::error::GlutenError;
 
 pub fn quote(_env: &mut Env, vec: &Vec<Val>) -> Result<Val, GlutenError> {

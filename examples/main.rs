@@ -9,7 +9,8 @@ use gluten::{
     data::*,
     error::GlutenError,
     reader::Reader,
-    core::{eval, Env, Macro, macro_expand, defmacro},
+    env::Env,
+    core::{eval, Macro, macro_expand, defmacro},
     quasiquote::quasiquote
 };
 
