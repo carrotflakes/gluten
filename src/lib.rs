@@ -1,4 +1,5 @@
 pub mod string_pool;
+pub mod symbol;
 pub mod data;
 pub mod error;
 pub mod reader;
