@@ -8,11 +8,13 @@ use crate::string_pool::StringPool;
 use crate::error::GlutenError;
 
 pub type AtomReader = Box<dyn FnMut(&mut StringPool, &str) -> Result<Val, GlutenError>>;
-pub type ReadTable = HashMap<char, Rc<dyn Fn(&mut Reader, &mut Peekable<Chars>) -> Result<Val, GlutenError>>>;
+pub type ReadFn = Rc<dyn Fn(&mut Reader, &mut Peekable<Chars>) -> Result<Val, GlutenError>>;
+pub type ReadTable = HashMap<char, ReadFn>;
 
 pub struct Reader {
     pub read_table: ReadTable,
     pub atom_reader: AtomReader,
+    pub read_fn: ReadFn,
     string_pool: StringPool
 }
 
@@ -21,6 +23,7 @@ impl Reader {
         Reader {
             read_table: make_default_read_table(),
             atom_reader,
+            read_fn: Rc::new(default_read_fn),
             string_pool: StringPool::new()
         }
     }
@@ -49,30 +52,7 @@ impl Reader {
     }
 
     pub fn parse_value(&mut self, cs: &mut Peekable<Chars>) -> Result<Val, GlutenError> {
-        const EXCEPT_CHARS: &[char] = &['(', ')', '\'', '"', ';'];
-        skip_whitespace(cs);
-        if let Some(c) = cs.peek().cloned() {
-            if let Some(f) = self.read_table.get(&c).cloned() {
-                cs.next();
-                f(self, cs)
-            } else if !c.is_whitespace() && !EXCEPT_CHARS.contains(&c) {
-                cs.next();
-                let mut vec = vec![c];
-                while let Some(c) = cs.peek() {
-                    if c.is_whitespace() || EXCEPT_CHARS.contains(c) {
-                        break;
-                    }
-                    vec.push(*c);
-                    cs.next();
-                }
-                let s: String = vec.iter().collect();
-                (self.atom_reader)(&mut self.string_pool, &s)
-            } else {
-                Err(GlutenError::ReadFailed(format!("unexpected character: {:?}", c)))
-            }
-        } else {
-            Err(GlutenError::ReadFailed("unexpected EOS".to_string()))
-        }
+        self.read_fn.clone()(self, cs)
     }
 
     pub fn intern(&mut self, s: &str) -> Symbol {
@@ -87,6 +67,33 @@ impl Reader {
 impl Default for Reader {
     fn default() -> Self {
         Reader::new(Box::new(default_atom_reader))
+    }
+}
+
+pub fn default_read_fn(reader: &mut Reader, cs: &mut Peekable<Chars>) -> Result<Val, GlutenError> {
+    const EXCEPT_CHARS: &[char] = &['(', ')', '\'', '"', ';'];
+    skip_whitespace(cs);
+    if let Some(c) = cs.peek().cloned() {
+        if let Some(f) = reader.read_table.get(&c).cloned() {
+            cs.next();
+            f(reader, cs)
+        } else if !c.is_whitespace() && !EXCEPT_CHARS.contains(&c) {
+            cs.next();
+            let mut vec = vec![c];
+            while let Some(c) = cs.peek() {
+                if c.is_whitespace() || EXCEPT_CHARS.contains(c) {
+                    break;
+                }
+                vec.push(*c);
+                cs.next();
+            }
+            let s: String = vec.iter().collect();
+            (reader.atom_reader)(&mut reader.string_pool, &s)
+        } else {
+            Err(GlutenError::ReadFailed(format!("unexpected character: {:?}", c)))
+        }
+    } else {
+        Err(GlutenError::ReadFailed("unexpected EOS".to_string()))
     }
 }
 

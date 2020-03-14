@@ -12,6 +12,9 @@ pub mod special_operators;
 pub mod rust_macros;
 pub mod val_helper;
 
+#[cfg(feature = "syntax_tree")]
+pub mod syntax_tree;
+
 pub use crate::string_pool::{StringPool, InternedString};
 pub use crate::data::*;
 pub use crate::reader::Reader;
