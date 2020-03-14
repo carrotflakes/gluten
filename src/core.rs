@@ -65,14 +65,18 @@ pub fn eval(env: Env, val: Val) -> Result<Val, GlutenError> {
         return env.get(s).ok_or_else(|| GlutenError::Unbound(s.clone()));
     } else if let Some(ref vec) = val.downcast_ref::<Vec<Val>>() {
         let first = eval(env.clone(), vec[0].clone())?;
+        let handle_err = |err| {
+            let name = vec[0].downcast_ref::<Symbol>().map(|s| format!("{}", s.0)).unwrap_or_else(|| "#UNKNOWN".to_owned());
+            GlutenError::Stacked(name, Box::new(err))
+        };
         let r = if let Some(ref f) = first.downcast_ref::<MyFn>() {
             let args = vec.iter().skip(1).map(|val| eval(env.clone(), val.clone())).collect::<Result<Vec<Val>, GlutenError>>()?;
             f(args)
         } else if let Some(ref f) = first.downcast_ref::<SpecialOperator>() {
-            return f(&mut env.clone(), vec).map_err(|err| GlutenError::Stacked(vec[0].downcast_ref::<Symbol>().map(|s| format!("{}", s.0)).unwrap_or_else(|| "#UNKNOWN".to_owned()), Box::new(err)));
+            return f(&mut env.clone(), vec).map_err(handle_err);
         } else if let Some(ref f) = first.downcast_ref::<NativeFn>() {
             let args = vec.iter().skip(1).map(|val| eval(env.clone(), val.clone())).collect::<Result<Vec<Val>, GlutenError>>()?;
-            return f(args).map_err(|err| GlutenError::Stacked(vec[0].downcast_ref::<Symbol>().map(|s| format!("{}", s.0)).unwrap_or_else(|| "#UNKNOWN".to_owned()), Box::new(err)));
+            return f(args).map_err(handle_err);
         } else {
             return Err(GlutenError::NotFunction(vec[0].clone()));
         };
