@@ -10,7 +10,7 @@ use gluten::{
     error::GlutenError,
     reader::Reader,
     env::Env,
-    core::{eval, Macro, macro_expand, defmacro},
+    macros::defmacro,
     quasiquote::quasiquote
 };
 
@@ -83,8 +83,8 @@ impl Gltn {
         (|| {
             let forms = self.0.reader().borrow_mut().parse_top_level(str)?;
             for form in forms {
-                let form = macro_expand(&mut self.0, form)?;
-                let form = eval(self.0.clone(), form)?;
+                let form = self.0.macro_expand(form)?;
+                let form = self.0.eval(form)?;
                 write_val(&mut std::io::stdout().lock(), &form);
                 println!("");
             }
@@ -96,7 +96,7 @@ impl Gltn {
                 println!("");
                 write_val(&mut std::io::stdout().lock(), &continuation);
                 println!(" => ");
-                let val = eval(self.0.clone(), continuation).unwrap();
+                let val = self.0.eval(continuation).unwrap();
                 write_val(&mut std::io::stdout().lock(), &val);
                 println!("");
                 println!("Frozen continuation end");

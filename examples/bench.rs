@@ -6,7 +6,7 @@ use gluten::{
     data::*,
     reader::Reader,
     env::Env,
-    core::{eval, Macro, macro_expand, defmacro},
+    macros::defmacro,
     quasiquote::quasiquote
 };
 use std::time::Instant;
@@ -58,8 +58,8 @@ impl Gltn {
         println!("> {}", str);
         let forms = self.0.reader().borrow_mut().parse_top_level(str).unwrap();
         for form in forms {
-            let form = macro_expand(&mut self.0, form).unwrap();
-            let form = eval(self.0.clone(), form).unwrap();
+            let form = self.0.macro_expand(form).unwrap();
+            let form = self.0.eval(form).unwrap();
             write_val(&mut std::io::stdout().lock(), &form);
             println!("");
         }

@@ -1,6 +1,6 @@
 use crate::data::*;
 use crate::env::Env;
-use crate::core::{eval, eval_iter};
+use crate::macros::eval_iter;
 use crate::error::GlutenError;
 
 pub fn quote(_env: &mut Env, vec: &Vec<Val>) -> Result<Val, GlutenError> {
@@ -13,8 +13,8 @@ pub fn quote(_env: &mut Env, vec: &Vec<Val>) -> Result<Val, GlutenError> {
 
 pub fn r#if(env: &mut Env, vec: &Vec<Val>) -> Result<Val, GlutenError> {
 	if vec.len() == 4 {
-		let cond = eval(env.clone(), vec[1].clone())?;
-		eval(env.clone(), if let Some(false) = cond.downcast_ref::<bool>() {
+		let cond = env.eval(vec[1].clone())?;
+		env.eval(if let Some(false) = cond.downcast_ref::<bool>() {
 			vec[3].clone()
 		} else {
 			vec[2].clone()
@@ -31,21 +31,21 @@ pub fn r#let(env: &mut Env, vec: &Vec<Val>) -> Result<Val, GlutenError> {
 			for val in v.iter() {
 				if let Some(v) = val.downcast_ref::<Vec<Val>>() {
 					if let Some(s) = v[0].downcast_ref::<Symbol>() {
-						let val = eval(env.clone(), v[1].clone())?;
+						let val = env.eval(v[1].clone())?;
 						env.insert(s.clone(), val);
 						continue;
 					}
 				}
 				return Err(GlutenError::Str("illegal let".to_string()));
 			}
-			return eval_iter(env, &mut vec.iter().skip(2));
+			return eval_iter(&mut env, &mut vec.iter().skip(2));
 		}
 	}
 	Err(GlutenError::Str(format!("invalid arguments")))
 }
 
 pub fn r#do(env: &mut Env, vec: &Vec<Val>) -> Result<Val, GlutenError> {
-	eval_iter(env.clone(), &mut vec.iter().skip(1))
+	eval_iter(env, &mut vec.iter().skip(1))
 }
 
 pub fn lambda(env: &mut Env, vec: &Vec<Val>) -> Result<Val, GlutenError> {
@@ -65,14 +65,14 @@ pub fn lambda(env: &mut Env, vec: &Vec<Val>) -> Result<Val, GlutenError> {
 			}
 			panic!("illegal lambda");
 		}
-		eval_iter(env, &mut body.iter())
+		eval_iter(&mut env, &mut body.iter())
 	}) as NativeFn))
 }
 
 pub fn set(env: &mut Env, vec: &Vec<Val>) -> Result<Val, GlutenError> {
 	if vec.len() == 3 {
 		if let Some(name) = vec[1].downcast_ref::<Symbol>() {
-			let val = eval(env.clone(), vec[2].clone())?;
+			let val = env.eval(vec[2].clone())?;
 			env.insert(name.clone(), val.clone());
 			return Ok(val);
 		}
