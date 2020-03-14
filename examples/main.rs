@@ -14,38 +14,6 @@ use gluten::{
     quasiquote::quasiquote
 };
 
-fn parse_int(s: &String) -> i32 {
-    s.parse().unwrap()
-}
-
-fn add(a: i32, b: i32) -> i32 {
-    a + b
-}
-
-fn write_val<T: Write>(write: &mut T, val: &Val) {
-    if let Some(s) = val.downcast_ref::<Symbol>() {
-        write!(write, "{}", s.0.as_ref()).unwrap();
-    } else if let Some(s) = val.downcast_ref::<String>() {
-        write!(write, "{:?}", s).unwrap();
-    } else if let Some(s) = val.downcast_ref::<i32>() {
-        write!(write, "{:?}", s).unwrap();
-    } else if let Some(vec) = val.downcast_ref::<Vec<Val>>() {
-        write!(write, "(").unwrap();
-        let mut first = true;
-        for val in vec {
-            if first {
-                first = false;
-            } else {
-                write!(write, " ").unwrap();
-            }
-            write_val(write, val);
-        }
-        write!(write, ")").unwrap();
-    } else {
-        write!(write, "#?#").unwrap();
-    }
-}
-
 struct Gltn(Env);
 
 impl Gltn {
@@ -267,4 +235,36 @@ fn read_raw_string(_reader: &mut Reader, cs: &mut Peekable<Chars>) -> Result<Val
     }
     let s: String = vec.iter().collect();
     Ok(r(s))
+}
+
+fn parse_int(s: &String) -> i32 {
+    s.parse().unwrap()
+}
+
+fn add(a: i32, b: i32) -> i32 {
+    a + b
+}
+
+fn write_val<T: Write>(write: &mut T, val: &Val) {
+    if let Some(s) = val.downcast_ref::<Symbol>() {
+        write!(write, "{}", s.0.as_ref()).unwrap();
+    } else if let Some(s) = val.downcast_ref::<String>() {
+        write!(write, "{:?}", s).unwrap();
+    } else if let Some(s) = val.downcast_ref::<i32>() {
+        write!(write, "{:?}", s).unwrap();
+    } else if let Some(vec) = val.downcast_ref::<Vec<Val>>() {
+        write!(write, "(").unwrap();
+        let mut first = true;
+        for val in vec {
+            if first {
+                first = false;
+            } else {
+                write!(write, " ").unwrap();
+            }
+            write_val(write, val);
+        }
+        write!(write, ")").unwrap();
+    } else {
+        write!(write, "#?#").unwrap();
+    }
 }

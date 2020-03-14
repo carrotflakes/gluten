@@ -1,10 +1,17 @@
 # Gluten
-Gluten is a DSL framework for Rust.
+A Lisp-like DSL framework for Rust.
 
-- S-expression
-- Easily connect between Rust and DSL
+## Features
+- [x] Readtable
+- [x] Macro
+- [x] Quasi-quote
+- [ ] Standard library
 
 ## Usage
+See [examples/main.rs](https://github.com/carrotflakes/gluten/blob/master/examples/main.rs) (but that will be changed often yet).
+
+## Used by
+https://github.com/carrotflakes/kantera
 
 ## Author
 
