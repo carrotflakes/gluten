@@ -14,10 +14,11 @@ pub fn read_list(reader: &mut Reader, cs: &mut Peekable<Chars>) -> Result<Val, G
         vec.push(val);
     }
     skip_whitespace(cs);
-    if cs.next() == None {
-        return Err(GlutenError::ReadFailed("closing parenthesis missing".to_string()));
+    if let Some(')') = cs.next() {
+        Ok(r(vec))
+    } else {
+        Err(GlutenError::ReadFailed("closing parenthesis missing".to_string()))
     }
-    Ok(r(vec))
 }
 
 pub fn read_quote(reader: &mut Reader, cs: &mut Peekable<Chars>) -> Result<Val, GlutenError> {
@@ -28,8 +29,8 @@ pub fn read_quote(reader: &mut Reader, cs: &mut Peekable<Chars>) -> Result<Val, 
 
 pub fn read_backquote(reader: &mut Reader, cs: &mut Peekable<Chars>) -> Result<Val, GlutenError> {
     let val = reader.parse_value(cs)?;
-    let quote = r(reader.intern("quasiquote"));
-    Ok(r(vec![quote, val]))
+    let quasiquote = r(reader.intern("quasiquote"));
+    Ok(r(vec![quasiquote, val]))
 }
 pub fn read_comma(reader: &mut Reader, cs: &mut Peekable<Chars>) -> Result<Val, GlutenError> {
     let op = if cs.peek() == Some(&'@') {

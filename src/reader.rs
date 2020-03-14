@@ -30,7 +30,7 @@ impl Reader {
         self.parse_value(&mut cs)
             .and_then(|val| {
                 skip_whitespace(&mut cs);
-                if let None = cs.peek() {
+                if cs.peek().is_none() {
                     Ok(val)
                 } else {
                     Err(GlutenError::ReadFailed("expect EOS, but found some character".to_string()))
@@ -41,44 +41,32 @@ impl Reader {
     pub fn parse_top_level(&mut self, src: &str) -> Result<Vec<Val>, GlutenError> {
         let mut vec = Vec::new();
         let mut cs = src.chars().peekable();
-        loop {
-            match self.parse_value(&mut cs) {
-                Ok(val) => {
-                    vec.push(val);
-                    skip_whitespace(&mut cs);
-                    if let None = cs.peek() {
-                        return Ok(vec);
-                    }
-                },
-                Err(err) => {
-                    return Err(err);
-                }
-            }
+        while cs.peek().is_some() {
+            vec.push(self.parse_value(&mut cs)?);
+            skip_whitespace(&mut cs);
         }
+        Ok(vec)
     }
 
-    pub(crate) fn parse_value(&mut self, cs: &mut Peekable<Chars>) -> Result<Val, GlutenError> {
+    pub fn parse_value(&mut self, cs: &mut Peekable<Chars>) -> Result<Val, GlutenError> {
+        const EXCEPT_CHARS: &[char] = &['(', ')', '\'', '"', ';'];
         skip_whitespace(cs);
-        if let Some(c) = cs.peek() {
+        if let Some(c) = cs.peek().cloned() {
             if let Some(f) = self.read_table.get(&c).cloned() {
                 cs.next();
                 f(self, cs)
-            } else if !c.is_whitespace() && !['(', ')', '\'', '"', ';'].contains(&c) {
-                let mut vec = vec![*c];
+            } else if !c.is_whitespace() && !EXCEPT_CHARS.contains(&c) {
                 cs.next();
-                loop {
-                    match cs.peek() {
-                        Some(c) if !c.is_whitespace() && !['(', ')', '\'', '"', ';'].contains(c) => {
-                            vec.push(*c);
-                            cs.next();
-                        },
-                        _ => {
-                            break;
-                        }
+                let mut vec = vec![c];
+                while let Some(c) = cs.peek() {
+                    if c.is_whitespace() || EXCEPT_CHARS.contains(c) {
+                        break;
                     }
+                    vec.push(*c);
+                    cs.next();
                 }
                 let s: String = vec.iter().collect();
-                (self.atom_reader)(&mut self.string_pool, &s).map(|val| val)
+                (self.atom_reader)(&mut self.string_pool, &s)
             } else {
                 Err(GlutenError::ReadFailed(format!("unexpected character: {:?}", c)))
             }
