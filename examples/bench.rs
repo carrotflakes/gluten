@@ -43,7 +43,9 @@ struct Gltn(Env);
 impl Gltn {
     fn new() -> Gltn {
         let reader = std::rc::Rc::new(std::cell::RefCell::new(Reader::default()));
-        Gltn(Env::new(reader.clone()))
+        let mut env = Env::new(reader.clone());
+        gluten::special_operators::insert_all(&mut env);
+        Gltn(env)
     }
 
     fn insert(&mut self, str: &str, val: Val) {

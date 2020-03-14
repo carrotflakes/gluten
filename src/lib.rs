@@ -5,6 +5,7 @@ pub mod reader;
 pub mod core;
 pub mod quasiquote;
 #[macro_use]
+pub mod special_operators;
 pub mod macros;
 pub mod val_helper;
 

@@ -52,7 +52,7 @@ impl Env {
     }
 }
 
-fn eval_iter<'a>(env: Env, iter: &mut impl Iterator<Item=&'a Val>) -> Result<Val, GlutenError> {
+pub fn eval_iter<'a>(env: Env, iter: &mut impl Iterator<Item=&'a Val>) -> Result<Val, GlutenError> {
     let mut ret = r(false);
     for val in iter {
         ret = eval(env.clone(), val.clone())?;
@@ -64,77 +64,12 @@ pub fn eval(env: Env, val: Val) -> Result<Val, GlutenError> {
     if let Some(s) = val.downcast_ref::<Symbol>() {
         return env.get(s).ok_or_else(|| GlutenError::Unbound(s.clone()));
     } else if let Some(ref vec) = val.downcast_ref::<Vec<Val>>() {
-        if let Some(ref s) = vec[0].downcast_ref::<Symbol>() {
-            match s.0.as_str() {
-                "quote" =>
-                    if vec.len() == 2 {
-                        return Ok(vec[1].clone());
-                    }
-                "if" =>
-                    if vec.len() == 4 {
-                        let cond = eval(env.clone(), vec[1].clone())?;
-                        return if let Some(false) = cond.downcast_ref::<bool>() {
-                            eval(env, vec[3].clone())
-                        } else {
-                            eval(env, vec[2].clone())
-                        };
-                    },
-                "let" =>
-                    if vec.len() >= 2 {
-                        if let Some(v) = vec[1].downcast_ref::<Vec<Val>>() {
-                            let mut env = env.child();
-                            for val in v.iter() {
-                                if let Some(v) = val.downcast_ref::<Vec<Val>>() {
-                                    if let Some(s) = v[0].downcast_ref::<Symbol>() {
-                                        let val = eval(env.clone(), v[1].clone())?;
-                                        env.insert(s.clone(), val);
-                                        continue;
-                                    }
-                                }
-                                return Err(GlutenError::Str("illegal let".to_string()));
-                            }
-                            return eval_iter(env, &mut vec.iter().skip(2));
-                        }
-                    }
-                "do" => {
-                    return eval_iter(env, &mut vec.iter().skip(1));
-                }
-                "lambda" => {
-                    let params = if let Some(params) = vec[1].downcast_ref::<Vec<Val>>() {
-                        params.clone()
-                    } else {
-                        return Err(GlutenError::Str("illegal lambda params".to_string()));
-                    };
-                    let body: Vec<Val> = vec.iter().skip(2).map(|val| val.clone()).collect();
-                    return Ok(r(Box::new(move |args: Vec<Val>| {
-                        let mut env = env.child();
-                        for (rs, val) in params.iter().zip(args.iter()) {
-                            if let Some(s) = (*rs).downcast_ref::<Symbol>() {
-                                env.insert(s.clone(), val.clone());
-                                continue;
-                            }
-                            panic!("illegal lambda");
-                        }
-                        eval_iter(env, &mut body.iter())
-                    }) as NativeFn));
-                }
-                "set" => {
-                    if vec.len() == 3 {
-                        if let Some(name) = vec[1].downcast_ref::<Symbol>() {
-                            let val = eval(env.clone(), vec[2].clone())?;
-                            env.0.borrow_mut().hash_map.insert(name.clone(), val.clone());
-                            return Ok(val);
-                        }
-                    }
-                    return Err(GlutenError::Str("illegal set".to_string()));
-                }
-                _ => {}
-            }
-        }
         let first = eval(env.clone(), vec[0].clone())?;
         let r = if let Some(ref f) = first.downcast_ref::<MyFn>() {
             let args = vec.iter().skip(1).map(|val| eval(env.clone(), val.clone())).collect::<Result<Vec<Val>, GlutenError>>()?;
             f(args)
+        } else if let Some(ref f) = first.downcast_ref::<SpecialOperator>() {
+            return f(&mut env.clone(), vec).map_err(|err| GlutenError::Stacked(vec[0].downcast_ref::<Symbol>().map(|s| format!("{}", s.0)).unwrap_or_else(|| "#UNKNOWN".to_owned()), Box::new(err)));
         } else if let Some(ref f) = first.downcast_ref::<NativeFn>() {
             let args = vec.iter().skip(1).map(|val| eval(env.clone(), val.clone())).collect::<Result<Vec<Val>, GlutenError>>()?;
             return f(args).map_err(|err| GlutenError::Stacked(vec[0].downcast_ref::<Symbol>().map(|s| format!("{}", s.0)).unwrap_or_else(|| "#UNKNOWN".to_owned()), Box::new(err)));
