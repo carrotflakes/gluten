@@ -8,7 +8,8 @@ pub enum GlutenError {
     NotFunction(Val),
     ReadFailed(String),
     Str(String),
-    Stacked(String, Box<GlutenError>)
+    Stacked(String, Box<GlutenError>),
+    Frozen(Val, Val)
 }
 
 impl fmt::Display for GlutenError {
@@ -19,7 +20,8 @@ impl fmt::Display for GlutenError {
             NotFunction(val) => write!(f, "Not a function: {:?}", val),
             ReadFailed(str) => write!(f, "Read failed: {}", str),
             Str(str) => f.write_str(&str),
-            Stacked(str, inner) => write!(f, "{}\nin {}", inner, str)
+            Stacked(str, inner) => write!(f, "{}\nin {}", inner, str),
+            Frozen(_value, _continuation) => write!(f, "Frozen...")
         }
     }
 }

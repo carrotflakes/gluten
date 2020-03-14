@@ -68,7 +68,21 @@ impl Gltn {
                 println!("");
             }
             Ok(())
-        })().unwrap_or_else(|e: GlutenError| println!("{}", e));
+        })().unwrap_or_else(|e: GlutenError| {
+            if let GlutenError::Frozen(val, continuation) = e {
+                println!("Frozen continuation:");
+                write_val(&mut std::io::stdout().lock(), &val);
+                println!("");
+                write_val(&mut std::io::stdout().lock(), &continuation);
+                println!(" => ");
+                let val = eval(self.0.clone(), continuation).unwrap();
+                write_val(&mut std::io::stdout().lock(), &val);
+                println!("");
+                println!("Frozen continuation end");
+            } else {
+                println!("{}", e);
+            }
+        });
     }
 }
 
@@ -143,6 +157,12 @@ fn main() {
     'add
     ; bye!
     ");
+
+    gltn.insert("freeze", r(Box::new(|vec: Vec<Val>| {
+        let val = &vec[0];
+        Err(GlutenError::Frozen(val.clone(), val.clone()))
+    }) as NativeFn));
+    gltn.rep("(vec 'a (freeze (vec 'b 'c)) 'd)");
 
     let hello_macro = gltn.0.reader().borrow_mut().parse("(quote hello_macro)").unwrap();
     gltn.insert("hello_macro", r(Macro(Box::new(move |_: &mut Env, _vec: Vec<Val>| {
