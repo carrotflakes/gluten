@@ -1,7 +1,10 @@
 #[macro_use]
 extern crate gluten;
 
+use std::rc::Rc;
 use std::io::Write;
+use std::iter::Peekable;
+use std::str::Chars;
 use gluten::{
     data::*,
     error::GlutenError,
@@ -46,7 +49,24 @@ struct Gltn(Env);
 
 impl Gltn {
     fn new() -> Gltn {
-        let reader = std::rc::Rc::new(std::cell::RefCell::new(Reader::default()));
+        let mut reader = Reader::default();
+        {
+            let mut read_table: gluten::reader::ReadTable = std::collections::HashMap::new();
+            read_table.insert('r', Rc::new(read_raw_string));
+            let r = move |reader: &mut Reader, cs: &mut Peekable<Chars>| {
+                if let Some(c) = cs.next() {
+                   if let Some(f) = read_table.get(&c).cloned() {
+                        f(reader, cs)
+                    } else {
+                        Err(GlutenError::ReadFailed(format!("Expect a read_table charactor")))
+                    }
+                } else {
+                    Err(GlutenError::ReadFailed(format!("Expect a read_table charactor, but found EOS")))
+                }
+            };
+            reader.read_table.insert('#', Rc::new(r));
+        }
+        let reader = std::rc::Rc::new(std::cell::RefCell::new(reader));
         let mut env = Env::new(reader.clone());
         gluten::special_operators::insert_all(&mut env);
         Gltn(env)
@@ -196,8 +216,54 @@ fn main() {
         Ok(ret)
     }))));
     gltn.rep("(or (or false false) 'hello 'goodbye)");
+
+    gltn.rep(r###"(vec 'a #r##"hoge"#fuga"##)"###);
+
     gltn.rep("hogehoge");
     gltn.rep("(false)");
     gltn.rep("(quote 1");
     gltn.rep("(let ((f (lambda (x) (vec-len x)))) (f '123))");
+}
+
+fn read_raw_string(_reader: &mut Reader, cs: &mut Peekable<Chars>) -> Result<Val, GlutenError> {
+    let mut numbers = 0;
+    while let Some('#') = cs.peek() {
+        cs.next();
+        numbers += 1;
+    }
+    match cs.next() {
+        Some('"') => {
+        }
+        Some(c) =>{
+            return Err(GlutenError::ReadFailed(format!("Expects '\"', but found {:?}", c)));
+        }
+        None => {
+            return Err(GlutenError::ReadFailed(format!("Expects '\"', but found EOS")));
+        }
+    }
+    let mut vec = Vec::new();
+    let mut continual_numbers = 0;
+    loop {
+        match cs.next() {
+            Some(c) if c == '#' => {
+                vec.push(c);
+                continual_numbers += 1;
+                if continual_numbers == numbers {
+                    if let Some('"') = vec.get(vec.len() - numbers - 1) {
+                        vec.resize(vec.len() - numbers - 1, ' ');
+                        break;
+                    }
+                }
+            }
+            Some(c) => {
+                vec.push(c);
+                continual_numbers = 0;
+            }
+            None => {
+                return Err(GlutenError::ReadFailed("raw_string is not closed".to_string()));
+            }
+        }
+    }
+    let s: String = vec.iter().collect();
+    Ok(r(s))
 }
