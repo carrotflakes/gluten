@@ -57,19 +57,23 @@ macro_rules! destruct_ {
     ([(($($vec_pats:tt)*) = $expr:expr) $($tts:tt)*] $body:block) => {
         if let Some(vec) = $expr.downcast_ref::<Vec<Val>>() {
             let mut it = vec.iter();
-            destruct_!([$((Some($vec_pats) = it.next()))* (end it) $($tts)*] $body)
+            destruct_!([(vec ($($vec_pats)*) it) $($tts)*] $body)
         }
     };
-    ([(Some($pat:tt) = $expr:expr) $($tts:tt)*] $body:block) => {{
-        if let Some(v) = $expr {
-            destruct_!([($pat = v) $($tts)*] $body)
-        }
-    }};
-    ([(end $it:ident) $($tts:tt)*] $body:block) => {{
+    ([(vec () $it:ident) $($tts:tt)*] $body:block) => {{
         if let None = $it.next() {
             destruct_!([$($tts)*] $body)
         }
     }};
+    ([(vec (.. $ident:ident) $it:ident) $($tts:tt)*] $body:block) => {{
+        let $ident = $it;
+        destruct_!([$($tts)*] $body)
+    }};
+    ([(vec ($pat:tt $($vec_pats:tt)*) $it:ident) $($tts:tt)*] $body:block) => {
+        if let Some(v) = $it.next() {
+            destruct_!([($pat = v) (vec ($($vec_pats)*) $it) $($tts)*] $body)
+        }
+    };
 }
 
 #[macro_export]
