@@ -13,6 +13,7 @@ pub enum Node {
         end: i32
     },
     List {
+        val: Val,
         children: Vec<Node>,
         start: i32,
         end: i32
@@ -63,6 +64,7 @@ fn nodize(val: &Val, src_len: i32) -> Node {
     if let Some(pval) = val.downcast_ref::<PositionalVal>() {
         if let Some(vec) = pval.val.downcast_ref::<Vec<Val>>() {
             Node::List {
+                val: pval.val.clone(),
                 children: vec.into_iter().map(|val| nodize(val, src_len)).collect(),
                 start: pval.start + src_len,
                 end: pval.end + src_len,
