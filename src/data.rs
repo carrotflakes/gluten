@@ -19,6 +19,8 @@ pub fn r<T: 'static>(t: T) -> Val {
 pub trait ValInterface {
     fn ref_as<T: 'static>(&self) -> Option<&T>;
     fn get_meta<T: 'static>(&self) -> Option<&T>;
+    fn wrap_meta<T: 'static>(self, metadata: T) -> Val;
+    fn unwrap_meta(&self) -> &Val;
 }
 
 impl ValInterface for Val {
@@ -39,6 +41,18 @@ impl ValInterface for Val {
             }
         } else {
             None
+        }
+    }
+
+    fn wrap_meta<T: 'static>(self, metadata: T) -> Val {
+        r(Meta(self, Box::new(metadata)))
+    }
+
+    fn unwrap_meta(&self) -> &Val {
+        if let Some(m) = self.downcast_ref::<Meta>() {
+            m.0.unwrap_meta()
+        } else {
+            self
         }
     }
 }
