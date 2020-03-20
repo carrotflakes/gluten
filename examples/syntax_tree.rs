@@ -1,24 +1,21 @@
 extern crate gluten;
 
 use gluten::{
+    data::{Val, ValInterface},
     reader::Reader,
-    syntax_tree::{Node, SyntaxTreeReader}
+    syntax_tree::{SyntaxTreeReader, SRange}
 };
 
-fn show_node(node: &Node, src: &str) {
-    match node {
-        Node::Atom { start, end, .. } => {
-            println!("atom: {}", &src[*start as usize..*end as usize]);
+fn show_node(val: &Val, src: &str) {
+    if let Some(sr) = val.get_meta::<SRange>() {
+        println!(r#""{}""#, &src[sr.start as usize..sr.end as usize]);
+    }
+    if let Some(vec) = val.ref_as::<Vec<Val>>() {
+        println!("(");
+        for v in vec {
+            show_node(v, src);
         }
-        Node::List { children, start, end } => {
-            println!("list: {}", &src[*start as usize..*end as usize]);
-            for child in children {
-                show_node(child, src);
-            }
-        }
-        Node::Untracked { .. } => {
-            println!("untracked");
-        }
+        println!(")");
     }
 }
 

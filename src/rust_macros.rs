@@ -4,12 +4,12 @@ macro_rules! fun_ {
         return r($call);
     };
     ($fn:ident ($($args:expr,)*), $it:ident, (&$t:ty $(, $ts:ty)*)) => {
-        if let Some(v) = $it.next().unwrap().downcast_ref::<$t>() {
+        if let Some(v) = $it.next().unwrap().ref_as::<$t>() {
             fun_!($fn ($($args,)* v,), $it, ($($ts),*))
         }
     };
     ($fn:ident ($($args:expr,)*), $it:ident, ($t:ty $(, $ts:ty)*)) => {
-        if let Some(v) = $it.next().unwrap().downcast_ref::<$t>() {
+        if let Some(v) = $it.next().unwrap().ref_as::<$t>() {
             fun_!($fn ($($args,)* *v,), $it, ($($ts),*))
         }
     };
@@ -39,7 +39,7 @@ macro_rules! destruct_ {
         $body
     };
     ([($ident:ident = $expr:expr) $($tts:tt)*] $body:block) => {
-        if let Some(v) = $expr.downcast_ref::<Symbol>() {
+        if let Some(v) = $expr.ref_as::<Symbol>() {
             if v.0.as_str() == stringify!($ident) {
                 destruct_!([$($tts)*] $body)
             }
@@ -50,12 +50,12 @@ macro_rules! destruct_ {
         destruct_!([$($tts)*] $body)
     }};
     ([({$ident:ident : $ty:ty} = $expr:expr) $($tts:tt)*] $body:block) => {
-        if let Some($ident) = $expr.downcast_ref::<$ty>() {
+        if let Some($ident) = $expr.ref_as::<$ty>() {
             destruct_!([$($tts)*] $body)
         }
     };
     ([(($($vec_pats:tt)*) = $expr:expr) $($tts:tt)*] $body:block) => {
-        if let Some(vec) = $expr.downcast_ref::<Vec<Val>>() {
+        if let Some(vec) = $expr.ref_as::<Vec<Val>>() {
             let mut it = vec.iter();
             destruct_!([(vec ($($vec_pats)*) it) $($tts)*] $body)
         }

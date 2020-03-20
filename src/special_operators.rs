@@ -14,7 +14,7 @@ pub fn quote(_env: &mut Env, vec: &Vec<Val>) -> Result<Val, GlutenError> {
 pub fn r#if(env: &mut Env, vec: &Vec<Val>) -> Result<Val, GlutenError> {
 	if vec.len() == 4 {
 		let cond = env.eval(vec[1].clone())?;
-		env.eval(if let Some(false) = cond.downcast_ref::<bool>() {
+		env.eval(if let Some(false) = cond.ref_as::<bool>() {
 			vec[3].clone()
 		} else {
 			vec[2].clone()
@@ -26,11 +26,11 @@ pub fn r#if(env: &mut Env, vec: &Vec<Val>) -> Result<Val, GlutenError> {
 
 pub fn r#let(env: &mut Env, vec: &Vec<Val>) -> Result<Val, GlutenError> {
 	if vec.len() >= 2 {
-		if let Some(v) = vec[1].downcast_ref::<Vec<Val>>() {
+		if let Some(v) = vec[1].ref_as::<Vec<Val>>() {
 			let mut env = env.child();
 			for val in v.iter() {
-				if let Some(v) = val.downcast_ref::<Vec<Val>>() {
-					if let Some(s) = v[0].downcast_ref::<Symbol>() {
+				if let Some(v) = val.ref_as::<Vec<Val>>() {
+					if let Some(s) = v[0].ref_as::<Symbol>() {
 						let val = env.eval(v[1].clone())?;
 						env.insert(s.clone(), val);
 						continue;
@@ -49,7 +49,7 @@ pub fn r#do(env: &mut Env, vec: &Vec<Val>) -> Result<Val, GlutenError> {
 }
 
 pub fn lambda(env: &mut Env, vec: &Vec<Val>) -> Result<Val, GlutenError> {
-	let params = if let Some(params) = vec[1].downcast_ref::<Vec<Val>>() {
+	let params = if let Some(params) = vec[1].ref_as::<Vec<Val>>() {
 		params.clone()
 	} else {
 		return Err(GlutenError::Str("illegal lambda params".to_string()));
@@ -59,7 +59,7 @@ pub fn lambda(env: &mut Env, vec: &Vec<Val>) -> Result<Val, GlutenError> {
 	Ok(r(Box::new(move |args: Vec<Val>| {
 		let mut env = env.child();
 		for (rs, val) in params.iter().zip(args.iter()) {
-			if let Some(s) = (*rs).downcast_ref::<Symbol>() {
+			if let Some(s) = (*rs).ref_as::<Symbol>() {
 				env.insert(s.clone(), val.clone());
 				continue;
 			}
@@ -71,7 +71,7 @@ pub fn lambda(env: &mut Env, vec: &Vec<Val>) -> Result<Val, GlutenError> {
 
 pub fn set(env: &mut Env, vec: &Vec<Val>) -> Result<Val, GlutenError> {
 	if vec.len() == 3 {
-		if let Some(name) = vec[1].downcast_ref::<Symbol>() {
+		if let Some(name) = vec[1].ref_as::<Symbol>() {
 			let val = env.eval(vec[2].clone())?;
 			env.insert(name.clone(), val.clone());
 			return Ok(val);

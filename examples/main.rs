@@ -4,7 +4,7 @@ extern crate gluten;
 use std::rc::Rc;
 use std::io::Write;
 use std::iter::Peekable;
-use std::str::Chars;
+use std::str::CharIndices;
 use gluten::{
     data::*,
     error::GlutenError,
@@ -22,8 +22,8 @@ impl Gltn {
         {
             let mut read_table: gluten::reader::ReadTable = std::collections::HashMap::new();
             read_table.insert('#', Rc::new(read_raw_string));
-            let r = move |reader: &mut Reader, cs: &mut Peekable<Chars>| {
-                if let Some(c) = cs.next() {
+            let r = move |reader: &mut Reader, cs: &mut Peekable<CharIndices>| {
+                if let Some((_, c)) = cs.next() {
                    if let Some(f) = read_table.get(&c).cloned() {
                         f(reader, cs)
                     } else {
@@ -194,16 +194,16 @@ fn main() {
     gltn.rep("(let ((f (lambda (x) (vec-len x)))) (f '123))");
 }
 
-fn read_raw_string(_reader: &mut Reader, cs: &mut Peekable<Chars>) -> Result<Val, GlutenError> {
+fn read_raw_string(_reader: &mut Reader, cs: &mut Peekable<CharIndices>) -> Result<Val, GlutenError> {
     let mut numbers = 2;
-    while let Some('#') = cs.peek() {
+    while let Some((_, '#')) = cs.peek() {
         cs.next();
         numbers += 1;
     }
     match cs.next() {
-        Some('"') => {
+        Some((_, '"')) => {
         }
-        Some(c) =>{
+        Some((_, c)) =>{
             return Err(GlutenError::ReadFailed(format!("Expects '\"', but found {:?}", c)));
         }
         None => {
@@ -214,7 +214,7 @@ fn read_raw_string(_reader: &mut Reader, cs: &mut Peekable<Chars>) -> Result<Val
     let mut continual_numbers = 0;
     loop {
         match cs.next() {
-            Some(c) if c == '#' => {
+            Some((_, c)) if c == '#' => {
                 vec.push(c);
                 continual_numbers += 1;
                 if continual_numbers == numbers {
@@ -224,7 +224,7 @@ fn read_raw_string(_reader: &mut Reader, cs: &mut Peekable<Chars>) -> Result<Val
                     }
                 }
             }
-            Some(c) => {
+            Some((_, c)) => {
                 vec.push(c);
                 continual_numbers = 0;
             }

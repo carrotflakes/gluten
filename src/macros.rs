@@ -3,12 +3,12 @@ use crate::env::Env;
 use crate::error::GlutenError;
 
 pub fn defmacro(env: &mut Env, vec: Vec<Val>) -> Result<Val, GlutenError> {
-    let name = if let Some(name) = vec[0].downcast_ref::<Symbol>() {
+    let name = if let Some(name) = vec[0].ref_as::<Symbol>() {
         name.clone()
     } else {
         return Err(GlutenError::Str("macro name must be a symbol".to_string()));
     };
-    let params = if let Some(params) = vec[1].downcast_ref::<Vec<Val>>() {
+    let params = if let Some(params) = vec[1].ref_as::<Vec<Val>>() {
         params.clone()
     } else {
         return Err(GlutenError::Str("illegal macro params".to_string()));
@@ -17,7 +17,7 @@ pub fn defmacro(env: &mut Env, vec: Vec<Val>) -> Result<Val, GlutenError> {
     let mac = r(Macro(Box::new(move |env: &mut Env, args: Vec<Val>| {
         let mut env = env.child();
         for (rs, val) in params.iter().zip(args.iter()) {
-            if let Some(s) = (*rs).downcast_ref::<Symbol>() {
+            if let Some(s) = (*rs).ref_as::<Symbol>() {
                 env.insert(s.clone(), val.clone());
                 continue;
             }

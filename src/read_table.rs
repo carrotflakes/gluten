@@ -1,39 +1,39 @@
 use std::rc::Rc;
-use std::str::Chars;
+use std::str::CharIndices;
 use std::iter::Peekable;
 use std::collections::HashMap;
 use crate::data::*;
 use crate::reader::{Reader, skip_whitespace};
 use crate::error::GlutenError;
 
-pub type ReadTable = HashMap<char, Rc<dyn Fn(&mut Reader, &mut Peekable<Chars>) -> Result<Val, GlutenError>>>;
+pub type ReadTable = HashMap<char, Rc<dyn Fn(&mut Reader, &mut Peekable<CharIndices>) -> Result<Val, GlutenError>>>;
 
-pub fn read_list(reader: &mut Reader, cs: &mut Peekable<Chars>) -> Result<Val, GlutenError> {
+pub fn read_list(reader: &mut Reader, cs: &mut Peekable<CharIndices>) -> Result<Val, GlutenError> {
     let mut vec = vec![];
     while let Ok(val) = reader.parse_value(cs) {
         vec.push(val);
     }
     skip_whitespace(cs);
-    if let Some(')') = cs.next() {
+    if let Some((_, ')')) = cs.next() {
         Ok(r(vec))
     } else {
         Err(GlutenError::ReadFailed("closing parenthesis missing".to_string()))
     }
 }
 
-pub fn read_quote(reader: &mut Reader, cs: &mut Peekable<Chars>) -> Result<Val, GlutenError> {
+pub fn read_quote(reader: &mut Reader, cs: &mut Peekable<CharIndices>) -> Result<Val, GlutenError> {
     let val = reader.parse_value(cs)?;
     let quote = r(reader.intern("quote"));
     Ok(r(vec![quote, val]))
 }
 
-pub fn read_backquote(reader: &mut Reader, cs: &mut Peekable<Chars>) -> Result<Val, GlutenError> {
+pub fn read_backquote(reader: &mut Reader, cs: &mut Peekable<CharIndices>) -> Result<Val, GlutenError> {
     let val = reader.parse_value(cs)?;
     let quasiquote = r(reader.intern("quasiquote"));
     Ok(r(vec![quasiquote, val]))
 }
-pub fn read_comma(reader: &mut Reader, cs: &mut Peekable<Chars>) -> Result<Val, GlutenError> {
-    let op = if cs.peek() == Some(&'@') {
+pub fn read_comma(reader: &mut Reader, cs: &mut Peekable<CharIndices>) -> Result<Val, GlutenError> {
+    let op = if let Some((_, '@')) = cs.peek() {
         cs.next();
         "unquote-splicing"
     } else {
@@ -44,16 +44,16 @@ pub fn read_comma(reader: &mut Reader, cs: &mut Peekable<Chars>) -> Result<Val, 
     Ok(r(vec![op, val]))
 }
 
-pub fn read_string(_reader: &mut Reader, cs: &mut Peekable<Chars>) -> Result<Val, GlutenError> {
+pub fn read_string(_reader: &mut Reader, cs: &mut Peekable<CharIndices>) -> Result<Val, GlutenError> {
     let mut vec = Vec::new();
     loop {
         match cs.next() {
-            Some(c) if c == '"' => {
+            Some((_, c)) if c == '"' => {
                 break;
             },
-            Some(c) if c == '\\' => {
+            Some((_, c)) if c == '\\' => {
                 match cs.next() {
-                    Some(c) => {
+                    Some((_, c)) => {
                         vec.push(match c {
                             'n' => '\n',
                             'r' => '\r',
@@ -66,7 +66,7 @@ pub fn read_string(_reader: &mut Reader, cs: &mut Peekable<Chars>) -> Result<Val
                     }
                 }
             },
-            Some(c) => {
+            Some((_, c)) => {
                 vec.push(c);
             },
             None => {

@@ -1,4 +1,4 @@
-use crate::data::Val;
+use crate::data::{Val, ValInterface};
 
 pub trait Get {
   fn clone_as<T: 'static + Clone>(&self) -> Option<T>;
@@ -7,11 +7,11 @@ pub trait Get {
 
 impl Get for Val {
   fn clone_as<T: 'static + Clone>(&self) -> Option<T> {
-    self.downcast_ref::<T>().cloned()
+    self.ref_as::<T>().cloned()
   }
 
   fn copy_as<T: 'static + Copy>(&self) -> Option<T> {
-    self.downcast_ref::<T>().copied()
+    self.ref_as::<T>().copied()
   }
 }
 

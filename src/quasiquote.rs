@@ -11,13 +11,13 @@ pub fn quasiquote(env: &mut Env, vec: Vec<Val>) -> Result<Val, GlutenError> {
             U(Val),
             US(Val)
         }
-        if let Some(vec) = val.downcast_ref::<Vec<Val>>() {
+        if let Some(vec) = val.ref_as::<Vec<Val>>() {
             let mut to_append = false;
             let mut qs = vec![];
             for val in vec {
-                if let Some(vec) = val.downcast_ref::<Vec<Val>>() {
+                if let Some(vec) = val.ref_as::<Vec<Val>>() {
                     if vec.len() == 2 {
-                        if let Some(s) = vec[0].downcast_ref::<Symbol>() {
+                        if let Some(s) = vec[0].ref_as::<Symbol>() {
                             if s.0.as_ref() == "unquote" {
                                 qs.push(Q::U(vec[1].clone()));
                                 continue;

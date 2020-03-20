@@ -61,24 +61,24 @@ impl Env {
 }
 
 pub fn eval(env: Env, val: Val) -> Result<Val, GlutenError> {
-    if let Some(s) = val.downcast_ref::<Symbol>() {
+    if let Some(s) = val.ref_as::<Symbol>() {
         return env.get(s).ok_or_else(|| GlutenError::Unbound(s.clone()));
-    } else if let Some(ref vec) = val.downcast_ref::<Vec<Val>>() {
+    } else if let Some(ref vec) = val.ref_as::<Vec<Val>>() {
         let first = eval(env.clone(), vec[0].clone())?;
         let handle_err = |err| {
             if let GlutenError::Frozen(val, continuation) = err {
                 GlutenError::Frozen(val, continuation)
             } else {
-                let name = vec[0].downcast_ref::<Symbol>().map(|s| format!("{}", s.0)).unwrap_or_else(|| "#UNKNOWN".to_owned());
+                let name = vec[0].ref_as::<Symbol>().map(|s| format!("{}", s.0)).unwrap_or_else(|| "#UNKNOWN".to_owned());
                 GlutenError::Stacked(name, Box::new(err))
             }
         };
-        let r = if let Some(ref f) = first.downcast_ref::<MyFn>() {
+        let r = if let Some(ref f) = first.ref_as::<MyFn>() {
             let args = vec.iter().skip(1).map(|val| eval(env.clone(), val.clone())).collect::<Result<Vec<Val>, GlutenError>>()?;
             f(args)
-        } else if let Some(ref f) = first.downcast_ref::<SpecialOperator>() {
+        } else if let Some(ref f) = first.ref_as::<SpecialOperator>() {
             return f(&mut env.clone(), vec).map_err(handle_err);
-        } else if let Some(ref f) = first.downcast_ref::<NativeFn>() {
+        } else if let Some(ref f) = first.ref_as::<NativeFn>() {
             let mut args: Vec<Val> = Vec::new();
             for val in vec.iter().skip(1) {
                 match eval(env.clone(), val.clone()) {
@@ -107,11 +107,11 @@ pub fn eval(env: Env, val: Val) -> Result<Val, GlutenError> {
 }
 
 pub fn macro_expand(env: &mut Env, val: Val) -> Result<Val, GlutenError> {
-    if let Some(ref vec) = val.downcast_ref::<Vec<Val>>() {
+    if let Some(ref vec) = val.ref_as::<Vec<Val>>() {
         let expaned_first = macro_expand(env, vec[0].clone())?;
-        if let Some(ref s) = expaned_first.downcast_ref::<Symbol>() {
+        if let Some(ref s) = expaned_first.ref_as::<Symbol>() {
             if let Some(val) = env.get(s) {
-                if let Some(ref mac) = val.downcast_ref::<Macro>() {
+                if let Some(ref mac) = val.ref_as::<Macro>() {
                     let args = vec.iter().skip(1).cloned().collect();
                     let expanded = (mac.0)(env, args)?;
                     return macro_expand(env, expanded);

@@ -1,5 +1,5 @@
 use std::rc::Rc;
-use std::str::Chars;
+use std::str::CharIndices;
 use std::iter::Peekable;
 use std::collections::HashMap;
 use crate::data::*;
@@ -8,7 +8,7 @@ use crate::string_pool::StringPool;
 use crate::error::GlutenError;
 
 pub type AtomReader = Box<dyn FnMut(&mut StringPool, &str) -> Result<Val, GlutenError>>;
-pub type ReadFn = Rc<dyn Fn(&mut Reader, &mut Peekable<Chars>) -> Result<Val, GlutenError>>;
+pub type ReadFn = Rc<dyn Fn(&mut Reader, &mut Peekable<CharIndices>) -> Result<Val, GlutenError>>;
 pub type ReadTable = HashMap<char, ReadFn>;
 
 pub struct Reader {
@@ -29,7 +29,7 @@ impl Reader {
     }
 
     pub fn parse(&mut self, src: &str) -> Result<Val, GlutenError> {
-        let mut cs = src.chars().peekable();
+        let mut cs = src.char_indices().peekable();
         self.parse_value(&mut cs)
             .and_then(|val| {
                 skip_whitespace(&mut cs);
@@ -43,7 +43,7 @@ impl Reader {
 
     pub fn parse_top_level(&mut self, src: &str) -> Result<Vec<Val>, GlutenError> {
         let mut vec = Vec::new();
-        let mut cs = src.chars().peekable();
+        let mut cs = src.char_indices().peekable();
         while cs.peek().is_some() {
             vec.push(self.parse_value(&mut cs)?);
             skip_whitespace(&mut cs);
@@ -51,7 +51,7 @@ impl Reader {
         Ok(vec)
     }
 
-    pub fn parse_value(&mut self, cs: &mut Peekable<Chars>) -> Result<Val, GlutenError> {
+    pub fn parse_value(&mut self, cs: &mut Peekable<CharIndices>) -> Result<Val, GlutenError> {
         self.read_fn.clone()(self, cs)
     }
 
@@ -70,17 +70,17 @@ impl Default for Reader {
     }
 }
 
-pub fn default_read_fn(reader: &mut Reader, cs: &mut Peekable<Chars>) -> Result<Val, GlutenError> {
+pub fn default_read_fn(reader: &mut Reader, cs: &mut Peekable<CharIndices>) -> Result<Val, GlutenError> {
     const EXCEPT_CHARS: &[char] = &['(', ')', '\'', '"', ';'];
     skip_whitespace(cs);
-    if let Some(c) = cs.peek().cloned() {
+    if let Some((i, c)) = cs.peek().cloned() {
         if let Some(f) = reader.read_table.get(&c).cloned() {
             cs.next();
             f(reader, cs)
         } else if !c.is_whitespace() && !EXCEPT_CHARS.contains(&c) {
             cs.next();
             let mut vec = vec![c];
-            while let Some(c) = cs.peek() {
+            while let Some((_, c)) = cs.peek() {
                 if c.is_whitespace() || EXCEPT_CHARS.contains(c) {
                     break;
                 }
@@ -90,19 +90,19 @@ pub fn default_read_fn(reader: &mut Reader, cs: &mut Peekable<Chars>) -> Result<
             let s: String = vec.iter().collect();
             (reader.atom_reader)(&mut reader.string_pool, &s)
         } else {
-            Err(GlutenError::ReadFailed(format!("unexpected character: {:?}", c)))
+            Err(GlutenError::ReadFailed(format!("unexpected character: {:?} as {}", c, i)))
         }
     } else {
         Err(GlutenError::ReadFailed("unexpected EOS".to_string()))
     }
 }
 
-pub fn skip_whitespace (cs: &mut Peekable<Chars>) {
-    while let Some(c) = cs.peek() {
+pub fn skip_whitespace (cs: &mut Peekable<CharIndices>) {
+    while let Some((_, c)) = cs.peek() {
         if *c == ';' {
             while match cs.next() {
-                    Some('\n') => false,
-                    Some('\r') => false,
+                    Some((_, '\n')) => false,
+                    Some((_, '\r')) => false,
                     Some(_) => true,
                     None => false
                 } {}
