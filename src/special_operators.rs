@@ -30,9 +30,9 @@ pub fn r#let(env: &mut Env, vec: &Vec<Val>) -> Result<Val, GlutenError> {
 			let mut env = env.child();
 			for val in v.iter() {
 				if let Some(v) = val.ref_as::<Vec<Val>>() {
-					if let Some(s) = v[0].ref_as::<Symbol>() {
+					if v[0].is::<Symbol>() {
 						let val = env.eval(v[1].clone())?;
-						env.insert(s.clone(), val);
+						env.insert(v[0].clone(), val);
 						continue;
 					}
 				}
@@ -59,8 +59,8 @@ pub fn lambda(env: &mut Env, vec: &Vec<Val>) -> Result<Val, GlutenError> {
 	Ok(r(Box::new(move |args: Vec<Val>| {
 		let mut env = env.child();
 		for (rs, val) in params.iter().zip(args.iter()) {
-			if let Some(s) = (*rs).ref_as::<Symbol>() {
-				env.insert(s.clone(), val.clone());
+			if rs.is::<Symbol>() {
+				env.insert(rs.clone(), val.clone());
 				continue;
 			}
 			panic!("illegal lambda");
@@ -71,9 +71,9 @@ pub fn lambda(env: &mut Env, vec: &Vec<Val>) -> Result<Val, GlutenError> {
 
 pub fn set(env: &mut Env, vec: &Vec<Val>) -> Result<Val, GlutenError> {
 	if vec.len() == 3 {
-		if let Some(name) = vec[1].ref_as::<Symbol>() {
+		if vec[1].is::<Symbol>() {
 			let val = env.eval(vec[2].clone())?;
-			env.insert(name.clone(), val.clone());
+			env.insert(vec[1].clone(), val.clone());
 			return Ok(val);
 		}
 	}
@@ -82,10 +82,12 @@ pub fn set(env: &mut Env, vec: &Vec<Val>) -> Result<Val, GlutenError> {
 
 pub fn insert_all(env: &mut Env) {
 	let reader = env.reader();
-	env.insert(reader.borrow_mut().intern("quote"), r(Box::new(quote) as SpecialOperator));
-	env.insert(reader.borrow_mut().intern("if"), r(Box::new(r#if) as SpecialOperator));
-	env.insert(reader.borrow_mut().intern("let"), r(Box::new(r#let) as SpecialOperator));
-	env.insert(reader.borrow_mut().intern("do"), r(Box::new(r#do) as SpecialOperator));
-	env.insert(reader.borrow_mut().intern("lambda"), r(Box::new(lambda) as SpecialOperator));
-	env.insert(reader.borrow_mut().intern("set"), r(Box::new(set) as SpecialOperator));
+	let mut reader = reader.borrow_mut();
+	let package = &mut reader.package;
+	env.insert(package.intern(&"quote".to_string()), r(Box::new(quote) as SpecialOperator));
+	env.insert(package.intern(&"if".to_string()), r(Box::new(r#if) as SpecialOperator));
+	env.insert(package.intern(&"let".to_string()), r(Box::new(r#let) as SpecialOperator));
+	env.insert(package.intern(&"do".to_string()), r(Box::new(r#do) as SpecialOperator));
+	env.insert(package.intern(&"lambda".to_string()), r(Box::new(lambda) as SpecialOperator));
+	env.insert(package.intern(&"set".to_string()), r(Box::new(set) as SpecialOperator));
 }

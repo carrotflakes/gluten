@@ -4,10 +4,9 @@ use std::iter::Peekable;
 use std::collections::HashMap;
 use crate::data::*;
 use crate::read_table::make_default_read_table;
-use crate::string_pool::StringPool;
 use crate::error::GlutenError;
 
-pub type AtomReader = Box<dyn FnMut(&mut StringPool, &str) -> Result<Val, GlutenError>>;
+pub type AtomReader = Box<dyn FnMut(&mut Package, &String) -> Result<Val, GlutenError>>;
 pub type ReadFn = Rc<dyn Fn(&mut Reader, &mut Peekable<CharIndices>) -> Result<Val, GlutenError>>;
 pub type ReadTable = HashMap<char, ReadFn>;
 
@@ -15,16 +14,16 @@ pub struct Reader {
     pub read_table: ReadTable,
     pub atom_reader: AtomReader,
     pub read_fn: ReadFn,
-    string_pool: StringPool
+    pub package: Package
 }
 
 impl Reader {
-    pub fn new(atom_reader: AtomReader) -> Self {
+    pub fn new(atom_reader: AtomReader, package: Package) -> Self {
         Reader {
             read_table: make_default_read_table(),
             atom_reader,
             read_fn: Rc::new(default_read_fn),
-            string_pool: StringPool::new()
+            package
         }
     }
 
@@ -54,19 +53,11 @@ impl Reader {
     pub fn parse_value(&mut self, cs: &mut Peekable<CharIndices>) -> Result<Val, GlutenError> {
         self.read_fn.clone()(self, cs)
     }
-
-    pub fn intern(&mut self, s: &str) -> Symbol {
-        Symbol(self.string_pool.intern(s))
-    }
-
-    pub fn try_intern(&self, s: &str) -> Option<Symbol> {
-        self.string_pool.try_intern(s).map(|s| Symbol(s))
-    }
 }
 
 impl Default for Reader {
     fn default() -> Self {
-        Reader::new(Box::new(default_atom_reader))
+        Reader::new(Box::new(default_atom_reader), Package::new())
     }
 }
 
@@ -88,7 +79,7 @@ pub fn default_read_fn(reader: &mut Reader, cs: &mut Peekable<CharIndices>) -> R
                 cs.next();
             }
             let s: String = vec.iter().collect();
-            (reader.atom_reader)(&mut reader.string_pool, &s)
+            (reader.atom_reader)(&mut reader.package, &s)
         } else {
             Err(GlutenError::ReadFailed(format!("unexpected character: {:?} as {}", c, i)))
         }
@@ -114,6 +105,6 @@ pub fn skip_whitespace (cs: &mut Peekable<CharIndices>) {
     }
 }
 
-pub fn default_atom_reader(sp: &mut StringPool, s: &str) -> Result<Val, GlutenError> {
-    Ok(r(Symbol(sp.intern(s))))
+pub fn default_atom_reader(package: &mut Package, s: &String) -> Result<Val, GlutenError> {
+    Ok(package.intern(s))
 }

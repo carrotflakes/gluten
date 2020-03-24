@@ -42,7 +42,7 @@ impl Gltn {
     }
 
     fn insert(&mut self, str: &str, val: Val) {
-        let sym = self.0.reader().borrow_mut().intern(str);
+        let sym = self.0.reader().borrow_mut().package.intern(&str.to_string());
         self.0.insert(sym, val);
     }
 
@@ -169,13 +169,13 @@ fn main() {
     gltn.rep("`(1 ,'2 ,@(vec '3 `4))");
 
     gltn.insert("or", r(Macro(Box::new(|env: &mut Env, vec: Vec<Val>| {
-        let let_sym = r(env.reader().borrow_mut().intern("let"));
-        let if_sym = r(env.reader().borrow_mut().intern("if"));
+        let let_sym = r(env.reader().borrow_mut().package.intern(&"let".to_string()));
+        let if_sym = r(env.reader().borrow_mut().package.intern(&"if".to_string()));
         let mut ret = vec.last().unwrap().clone();
         let mut i = 0;
         for val in vec.iter().rev().skip(1) {
             i += 1;
-            let sym = r(env.reader().borrow_mut().intern(&format!("#gensym{}#", i)));
+            let sym = r(env.reader().borrow_mut().package.intern(&format!("#gensym{}#", i)));
             ret = r(vec![
                 let_sym.clone(),
                 r(vec![r(vec![sym.clone(), val.clone()])]),
@@ -247,7 +247,7 @@ fn add(a: i32, b: i32) -> i32 {
 
 fn write_val<T: Write>(write: &mut T, val: &Val) {
     if let Some(s) = val.downcast_ref::<Symbol>() {
-        write!(write, "{}", s.0.as_ref()).unwrap();
+        write!(write, "{}", s.0.as_str()).unwrap();
     } else if let Some(s) = val.downcast_ref::<String>() {
         write!(write, "{:?}", s).unwrap();
     } else if let Some(s) = val.downcast_ref::<i32>() {

@@ -18,10 +18,10 @@ pub fn quasiquote(env: &mut Env, vec: Vec<Val>) -> Result<Val, GlutenError> {
                 if let Some(vec) = val.ref_as::<Vec<Val>>() {
                     if vec.len() == 2 {
                         if let Some(s) = vec[0].ref_as::<Symbol>() {
-                            if s.0.as_ref() == "unquote" {
+                            if s.0.as_str() == "unquote" {
                                 qs.push(Q::U(vec[1].clone()));
                                 continue;
-                            } else if s.0.as_ref() == "unquote-splicing" {
+                            } else if s.0.as_str() == "unquote-splicing" {
                                 qs.push(Q::US(vec[1].clone()));
                                 to_append = true;
                                 continue;
@@ -31,9 +31,9 @@ pub fn quasiquote(env: &mut Env, vec: Vec<Val>) -> Result<Val, GlutenError> {
                 }
                 qs.push(Q::V(val.clone()));
             }
-            let vec_sym = r(env.reader().borrow_mut().intern("vec"));
+            let vec_sym = env.reader().borrow_mut().package.intern(&"vec".to_string());
             if to_append {
-                let append_sym = r(env.reader().borrow_mut().intern("append"));
+                let append_sym = env.reader().borrow_mut().package.intern(&"append".to_string());
                 r(vec![append_sym].into_iter().chain(qs.into_iter().map(|q| {
                     match q {
                         Q::V(val) => r(vec![vec_sym.clone(), f(env, &val)]),
@@ -51,7 +51,7 @@ pub fn quasiquote(env: &mut Env, vec: Vec<Val>) -> Result<Val, GlutenError> {
                 })).collect::<Vec<Val>>())
             }
         } else {
-            r(vec![r(env.reader().borrow_mut().intern("quote")), val.clone()])
+            r(vec![env.reader().borrow_mut().package.intern(&"quote".to_string()), val.clone()])
         }
     }
     Ok(f(env, &vec[0]))

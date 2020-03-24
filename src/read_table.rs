@@ -23,13 +23,13 @@ pub fn read_list(reader: &mut Reader, cs: &mut Peekable<CharIndices>) -> Result<
 
 pub fn read_quote(reader: &mut Reader, cs: &mut Peekable<CharIndices>) -> Result<Val, GlutenError> {
     let val = reader.parse_value(cs)?;
-    let quote = r(reader.intern("quote"));
+    let quote = reader.package.intern(&"quote".to_string());
     Ok(r(vec![quote, val]))
 }
 
 pub fn read_backquote(reader: &mut Reader, cs: &mut Peekable<CharIndices>) -> Result<Val, GlutenError> {
     let val = reader.parse_value(cs)?;
-    let quasiquote = r(reader.intern("quasiquote"));
+    let quasiquote = reader.package.intern(&"quasiquote".to_string());
     Ok(r(vec![quasiquote, val]))
 }
 pub fn read_comma(reader: &mut Reader, cs: &mut Peekable<CharIndices>) -> Result<Val, GlutenError> {
@@ -39,7 +39,7 @@ pub fn read_comma(reader: &mut Reader, cs: &mut Peekable<CharIndices>) -> Result
     } else {
         "unquote"
     };
-    let op = r(reader.intern(op));
+    let op = reader.package.intern(&op.to_string());
     let val = reader.parse_value(cs)?;
     Ok(r(vec![op, val]))
 }

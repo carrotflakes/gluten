@@ -1,13 +1,32 @@
 use std::rc::Rc;
 use std::cell::RefCell;
+use std::hash::{Hash, Hasher};
 use crate::data::*;
 use crate::reader::Reader;
 use crate::error::GlutenError;
 
 use std::collections::HashMap;
 
+struct Key(Val);
+
+impl PartialEq for Key {
+    #[inline(always)]
+    fn eq(&self, other: &Self) -> bool {
+        Rc::ptr_eq(&self.0, &other.0)
+    }
+}
+
+impl Eq for Key {}
+
+impl Hash for Key {
+    #[inline(always)]
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        std::ptr::hash(&*self.0, state);
+    }
+}
+
 struct EnvInner {
-    hash_map: HashMap<Symbol, Val>,
+    hash_map: HashMap<Key, Val>,
     parent: Result<Env, Rc<RefCell<Reader>>>
 }
 
@@ -29,12 +48,12 @@ impl Env {
         eval(self.clone(), val)
     }
 
-    pub fn insert(&mut self, s: Symbol, val: Val) {
-        self.0.borrow_mut().hash_map.insert(s, val);
+    pub fn insert(&mut self, s: Val, val: Val) {
+        self.0.borrow_mut().hash_map.insert(Key(s), val);
     }
 
-    pub fn get(&self, s: &Symbol) -> Option<Val> {
-        if let Some(val) = self.0.borrow().hash_map.get(s) {
+    pub fn get(&self, s: &Val) -> Option<Val> {
+        if let Some(val) = self.0.borrow().hash_map.get(unsafe {std::mem::transmute::<&Val, &Key>(s)}) {
             Some(val.clone())
         } else {
             self.0.borrow().parent.as_ref().ok().and_then(|env| env.get(s))
@@ -62,7 +81,7 @@ impl Env {
 
 pub fn eval(env: Env, val: Val) -> Result<Val, GlutenError> {
     if let Some(s) = val.ref_as::<Symbol>() {
-        return env.get(s).ok_or_else(|| GlutenError::Unbound(s.clone()));
+        return env.get(&val).ok_or_else(|| GlutenError::Unbound(s.clone()));
     } else if let Some(ref vec) = val.ref_as::<Vec<Val>>() {
         let first = eval(env.clone(), vec[0].clone())?;
         let handle_err = |err| {
@@ -109,8 +128,8 @@ pub fn eval(env: Env, val: Val) -> Result<Val, GlutenError> {
 pub fn macro_expand(env: &mut Env, val: Val) -> Result<Val, GlutenError> {
     if let Some(ref vec) = val.ref_as::<Vec<Val>>() {
         let expaned_first = macro_expand(env, vec[0].clone())?;
-        if let Some(ref s) = expaned_first.ref_as::<Symbol>() {
-            if let Some(val) = env.get(s) {
+        if expaned_first.is::<Symbol>() {
+            if let Some(val) = env.get(&expaned_first) {
                 if let Some(ref mac) = val.ref_as::<Macro>() {
                     let args = vec.iter().skip(1).cloned().collect();
                     let expanded = (mac.0)(env, args)?;

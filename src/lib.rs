@@ -1,5 +1,4 @@
-pub mod string_pool;
-pub mod symbol;
+pub mod package;
 pub mod data;
 pub mod error;
 pub mod read_table;
@@ -15,7 +14,6 @@ pub mod val_helper;
 #[cfg(feature = "syntax_tree")]
 pub mod syntax_tree;
 
-pub use crate::string_pool::{StringPool, InternedString};
 pub use crate::data::*;
 pub use crate::reader::Reader;
 pub use crate::env::Env;
