@@ -16,6 +16,7 @@ pub struct Meta(pub Val, pub Box<dyn Any>);
 pub struct Symbol(pub String);
 
 pub fn r<T: 'static>(t: T) -> Val {
+    debug_assert_ne!(TypeId::of::<T>(), TypeId::of::<Val>());
     Rc::new(t) as Val
 }
 
