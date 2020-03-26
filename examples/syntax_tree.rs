@@ -3,7 +3,7 @@ extern crate gluten;
 use gluten::{
     data::{Val, ValInterface},
     reader::Reader,
-    syntax_tree::{SyntaxTreeReader, SRange}
+    syntax_tree::{make_syntax_tree_reader, SRange}
 };
 
 fn show_node(val: &Val, src: &str) {
@@ -20,7 +20,7 @@ fn show_node(val: &Val, src: &str) {
 }
 
 fn main() {
-    let mut st_reader = SyntaxTreeReader::new(Reader::default());
+    let mut st_reader = make_syntax_tree_reader(Reader::default());
     let src = r#"
     (+ 1 2 ( f hoge ) "nyan" 'fuga `(a b) '`'"(^_^)")
     "#;
