@@ -169,13 +169,13 @@ fn main() {
     gltn.rep("`(1 ,'2 ,@(vec '3 `4))");
 
     gltn.insert("or", r(Macro(Box::new(|env: &mut Env, vec: Vec<Val>| {
-        let let_sym = r(env.reader().borrow_mut().package.intern(&"let".to_string()));
-        let if_sym = r(env.reader().borrow_mut().package.intern(&"if".to_string()));
+        let let_sym = env.reader().borrow_mut().package.intern(&"let".to_string());
+        let if_sym = env.reader().borrow_mut().package.intern(&"if".to_string());
         let mut ret = vec.last().unwrap().clone();
         let mut i = 0;
         for val in vec.iter().rev().skip(1) {
             i += 1;
-            let sym = r(env.reader().borrow_mut().package.intern(&format!("#gensym{}#", i)));
+            let sym = env.reader().borrow_mut().package.intern(&format!("#gensym{}#", i));
             ret = r(vec![
                 let_sym.clone(),
                 r(vec![r(vec![sym.clone(), val.clone()])]),
