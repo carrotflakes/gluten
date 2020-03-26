@@ -49,11 +49,13 @@ impl Env {
     }
 
     pub fn insert(&mut self, s: Val, val: Val) {
+        let s = s.unwrap_meta().clone();
         self.0.borrow_mut().hash_map.insert(Key(s), val);
     }
 
     pub fn get(&self, s: &Val) -> Option<Val> {
-        if let Some(val) = self.0.borrow().hash_map.get(unsafe {std::mem::transmute::<&Val, &Key>(s)}) {
+        let key = unsafe {std::mem::transmute::<&Val, &Key>(s.unwrap_meta())};
+        if let Some(val) = self.0.borrow().hash_map.get(key) {
             Some(val.clone())
         } else {
             self.0.borrow().parent.as_ref().ok().and_then(|env| env.get(s))
