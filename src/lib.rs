@@ -9,8 +9,6 @@ pub mod quasiquote;
 pub mod special_operators;
 #[macro_use]
 pub mod rust_macros;
-
-#[cfg(feature = "syntax_tree")]
 pub mod syntax_tree;
 
 pub use crate::data::*;
