@@ -6,8 +6,8 @@ use crate::data::*;
 use crate::read_table::make_default_read_table;
 use crate::error::GlutenError;
 
-pub type AtomReader = Box<dyn FnMut(&mut Package, &String) -> Result<Val, GlutenError>>;
-pub type ReadFn = Rc<dyn Fn(&mut Reader, &mut Peekable<CharIndices>) -> Result<Val, GlutenError>>;
+pub type AtomReader = Box<dyn FnMut(&mut Package, &String) -> Result<R<Val>, GlutenError>>;
+pub type ReadFn = Rc<dyn Fn(&mut Reader, &mut Peekable<CharIndices>) -> Result<R<Val>, GlutenError>>;
 pub type ReadTable = HashMap<char, ReadFn>;
 
 pub struct Reader {
@@ -27,7 +27,7 @@ impl Reader {
         }
     }
 
-    pub fn parse(&mut self, src: &str) -> Result<Val, GlutenError> {
+    pub fn parse(&mut self, src: &str) -> Result<R<Val>, GlutenError> {
         let mut cs = src.char_indices().peekable();
         self.parse_value(&mut cs)
             .and_then(|val| {
@@ -40,7 +40,7 @@ impl Reader {
             })
     }
 
-    pub fn parse_top_level(&mut self, src: &str) -> Result<Vec<Val>, GlutenError> {
+    pub fn parse_top_level(&mut self, src: &str) -> Result<Vec<R<Val>>, GlutenError> {
         let mut vec = Vec::new();
         let mut cs = src.char_indices().peekable();
         while cs.peek().is_some() {
@@ -50,7 +50,7 @@ impl Reader {
         Ok(vec)
     }
 
-    pub fn parse_value(&mut self, cs: &mut Peekable<CharIndices>) -> Result<Val, GlutenError> {
+    pub fn parse_value(&mut self, cs: &mut Peekable<CharIndices>) -> Result<R<Val>, GlutenError> {
         self.read_fn.clone()(self, cs)
     }
 }
@@ -61,7 +61,7 @@ impl Default for Reader {
     }
 }
 
-pub fn default_read_fn(reader: &mut Reader, cs: &mut Peekable<CharIndices>) -> Result<Val, GlutenError> {
+pub fn default_read_fn(reader: &mut Reader, cs: &mut Peekable<CharIndices>) -> Result<R<Val>, GlutenError> {
     const EXCEPT_CHARS: &[char] = &['(', ')', '\'', '"', ';'];
     skip_whitespace(cs);
     if let Some((i, c)) = cs.peek().cloned() {
@@ -105,6 +105,6 @@ pub fn skip_whitespace (cs: &mut Peekable<CharIndices>) {
     }
 }
 
-pub fn default_atom_reader(package: &mut Package, s: &String) -> Result<Val, GlutenError> {
+pub fn default_atom_reader(package: &mut Package, s: &String) -> Result<R<Val>, GlutenError> {
     Ok(package.intern(s))
 }

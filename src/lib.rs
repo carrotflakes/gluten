@@ -7,9 +7,8 @@ pub mod env;
 pub mod macros;
 pub mod quasiquote;
 pub mod special_operators;
-#[macro_use]
-pub mod rust_macros;
-pub mod syntax_tree;
+// #[macro_use]
+// pub mod rust_macros;
 
 pub use crate::data::*;
 pub use crate::reader::Reader;

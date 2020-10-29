@@ -5,11 +5,11 @@ use std::fmt;
 #[derive(Debug, Clone)]
 pub enum GlutenError {
     Unbound(Symbol),
-    NotFunction(Val),
+    NotFunction(R<Val>),
     ReadFailed(String),
     Str(String),
     Stacked(String, Box<GlutenError>),
-    Frozen(Val, Val)
+    Frozen(R<Val>, R<Val>),
 }
 
 impl fmt::Display for GlutenError {
@@ -21,7 +21,7 @@ impl fmt::Display for GlutenError {
             ReadFailed(str) => write!(f, "Read failed: {}", str),
             Str(str) => f.write_str(&str),
             Stacked(str, inner) => write!(f, "{}\nin {}", inner, str),
-            Frozen(_value, _continuation) => write!(f, "Frozen...")
+            Frozen(_value, _continuation) => write!(f, "Frozen..."),
         }
     }
 }
@@ -31,7 +31,7 @@ impl Error for GlutenError {
         use GlutenError::*;
         match self {
             Stacked(_, inner) => Some(inner),
-            _ => None
+            _ => None,
         }
     }
 }
